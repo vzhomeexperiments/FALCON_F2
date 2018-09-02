@@ -7,11 +7,12 @@
 #include <02_OrderProfitToCSV.mqh>
 #include <03_ReadCommandFromCSV.mqh>
 #include <08_TerminalNumber.mqh>
-//#include <096_ReadMarketTypeFromCSV.mqh>
+#include <096_ReadMarketTypeFromCSV.mqh>
 #include <10_isNewBar.mqh>
 #include <12_ReadPredictionFromAI.mqh>
 #include <14_ReadPriceChangePredictionFromAI.mqh>
 #include <15_ReadPriceChangeTriggerFromAI.mqh>
+#include <16_LogMarketType.mqh>
 
 #property copyright "Copyright 2015, Black Algo Technologies Pte Ltd"
 #property copyright "Copyright 2018, Vladimir Zhbanko"
@@ -264,7 +265,7 @@ int start()
          
          //code that only executed once a bar
          OrderProfitToCSV(T_Num(MagicNumber));                        //write previous orders profit results for auto analysis in R
-         //MyMarketType = ReadMarketFromCSV(Symbol(), 15);            //read analytical output from the Decision Support System
+         MyMarketType = ReadMarketFromCSV(Symbol(), 15);            //read analytical output from the Decision Support System
          //predicted using M1 Timeframe
          AIPredictionM1 = ReadPredictionFromAI(Symbol(),predictor_periodM1);            //read predicted direction for the next trade
          AIPriceChangePredictionM1 = ReadPriceChangePredictionFromAI(Symbol(),predictor_periodM1); //price change prediction
@@ -404,6 +405,9 @@ int start()
               { // Open Long Positions
                OrderNumber=OpenPositionMarket(OP_BUY,GetLot(IsSizingOn,Lots,Risk,YenPairAdjustFactor,Stop,P),Stop,Take,MagicNumber,Slippage,OnJournaling,P,IsECNbroker,MaxRetriesPerTick,RetryInterval);
    
+               // Log current MarketType to the file in the sandbox
+               LogMarketType(MagicNumber, OrderNumber, MyMarketType);
+   
                // Set Stop Loss value for Hidden SL
                if(UseHiddenStopLoss) SetStopLossHidden(OnJournaling,IsVolatilityStopLossOn_Hidden,FixedStopLoss_Hidden,myATR,VolBasedSLMultiplier_Hidden,P,OrderNumber);
    
@@ -421,6 +425,9 @@ int start()
             if(TradeAllowed && FlagSell && EntrySignal(CrossTriggered1)==2)
               { // Open Short Positions
                OrderNumber=OpenPositionMarket(OP_SELL,GetLot(IsSizingOn,Lots,Risk,YenPairAdjustFactor,Stop,P),Stop,Take,MagicNumber,Slippage,OnJournaling,P,IsECNbroker,MaxRetriesPerTick,RetryInterval);
+   
+               // Log current MarketType to the file in the sandbox
+               LogMarketType(MagicNumber, OrderNumber, MyMarketType);
    
                // Set Stop Loss value for Hidden SL
                if(UseHiddenStopLoss) SetStopLossHidden(OnJournaling,IsVolatilityStopLossOn_Hidden,FixedStopLoss_Hidden,myATR,VolBasedSLMultiplier_Hidden,P,OrderNumber);
