@@ -2394,10 +2394,10 @@ bool GetTradeFlagCondition(int DirectionM1,int DirectionM15, int DirectionM60, /
                         //Specifying Buy Conditions
                            if(DirectionCheck == "buy")
                              {
-                               if(ExpectedMoveM1 > 0 && ExpectedMoveM15 > EntryTradeTriggerM15 && ExpectedMoveM60 > EntryTradeTriggerM15) result = True;
+                               if(ExpectedMoveM15 > EntryTradeTriggerM15 && ExpectedMoveM60 > EntryTradeTriggerM15) result = True;
                              } else if(DirectionCheck == "sell")//Specifying Buy Conditions
                                       {
-                                       if(ExpectedMoveM1 < 0 && ExpectedMoveM15 < (-1*EntryTradeTriggerM15) && ExpectedMoveM60 < (-1* EntryTradeTriggerM15)) result = True;
+                                       if(ExpectedMoveM15 < (-1*EntryTradeTriggerM15) && ExpectedMoveM60 < (-1* EntryTradeTriggerM15)) result = True;
                                       }
                
               }
