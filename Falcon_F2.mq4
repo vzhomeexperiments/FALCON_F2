@@ -13,6 +13,7 @@
 #include <14_ReadPriceChangePredictionFromAI.mqh>
 #include <15_ReadPriceChangeTriggerFromAI.mqh>
 #include <16_LogMarketType.mqh>
+#include <17_CheckIfMarketTypePolicyIsOn.mqh>
 
 #property copyright "Copyright 2015, Black Algo Technologies Pte Ltd"
 #property copyright "Copyright 2018, Vladimir Zhbanko"
@@ -178,6 +179,7 @@ double HiddenVolTrailingList[][3]; // First dimension is for position ticket num
 
 string  InternalHeader3="----------Decision Support Variables-----------";
 bool     TradeAllowed = true; 
+bool     isMarketTypePolicyON = true;
 bool FlagBuy, FlagSell;       //boolean flags to limit direction of trades
 datetime ReferenceTime;       //used for order history
 int     MyMarketType;         //used to recieve market status from AI
@@ -266,6 +268,13 @@ int start()
          //code that only executed once a bar
          OrderProfitToCSV(T_Num(MagicNumber));                        //write previous orders profit results for auto analysis in R
          MyMarketType = ReadMarketFromCSV(Symbol(), 15);            //read analytical output from the Decision Support System
+         //get the Reinforcement Learning policy for specific Market Type
+         if(TerminalType == 0)
+           {
+            isMarketTypePolicyON = CheckIfMarketTypePolicyIsOn(MagicNumber, MyMarketType);
+           }
+         
+         
          //predicted using M1 Timeframe
          AIPredictionM1 = ReadPredictionFromAI(Symbol(),predictor_periodM1);            //read predicted direction for the next trade
          AIPriceChangePredictionM1 = ReadPriceChangePredictionFromAI(Symbol(),predictor_periodM1); //price change prediction
@@ -305,9 +314,10 @@ int start()
                            
          TimeMaxHold = GetTimeMaxHold(TimeMaxHoldM1, TimeMaxHoldM15, TimeMaxHoldM60,    //time to hold order from the parameters
                                       RobotBehavior);
-                   
+         
+         //TradeAllowed is checking Macroeconomic events (derived from Decision Support System)          
          TradeAllowed = ReadCommandFromCSV(MagicNumber);              //read command from R to make sure trading is allowed
-
+         
        
      }
      
@@ -401,7 +411,7 @@ int start()
       if(IsVolLimitBreached(IsVolLimitActivated,VolatilityMultiplier,ATRTimeframe,ATRPeriod)==False)
          if(IsMaxPositionsReached(MaxPositionsAllowed,MagicNumber,OnJournaling)==False)
            {
-            if(TradeAllowed && FlagBuy && EntrySignal(CrossTriggered1)==1)
+            if(TradeAllowed && isMarketTypePolicyON && FlagBuy && EntrySignal(CrossTriggered1)==1)
               { // Open Long Positions
                OrderNumber=OpenPositionMarket(OP_BUY,GetLot(IsSizingOn,Lots,Risk,YenPairAdjustFactor,Stop,P),Stop,Take,MagicNumber,Slippage,OnJournaling,P,IsECNbroker,MaxRetriesPerTick,RetryInterval);
    
@@ -422,7 +432,7 @@ int start()
              
               }
    
-            if(TradeAllowed && FlagSell && EntrySignal(CrossTriggered1)==2)
+            if(TradeAllowed && isMarketTypePolicyON && FlagSell && EntrySignal(CrossTriggered1)==2)
               { // Open Short Positions
                OrderNumber=OpenPositionMarket(OP_SELL,GetLot(IsSizingOn,Lots,Risk,YenPairAdjustFactor,Stop,P),Stop,Take,MagicNumber,Slippage,OnJournaling,P,IsECNbroker,MaxRetriesPerTick,RetryInterval);
    
