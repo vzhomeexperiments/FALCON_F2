@@ -19,7 +19,7 @@
 #property copyright "Copyright 2018, Vladimir Zhbanko"
 #property link      "lucas@blackalgotechnologies.com"
 #property link      "https://vladdsm.github.io/myblog_attempt/"
-#property version   "1.001"  
+#property version   "1.002"  
 #property strict
 /* 
 
@@ -43,6 +43,11 @@ Falcon F2:
 # C. Only one order can be opened at the time
 # Trade Exit is triggered when:
 # A. Time of the order is reached fixed value e.g 1125 min
+
+# v 1.002
+Added option CloseOnFriday
+- closing all positions 1hr before events
+- inhibit opening of new positions
 */
 
 //+------------------------------------------------------------------+
@@ -76,6 +81,7 @@ extern double  takeProfFactorM60                = 1;    //TP factor from 0.25 to
 extern int     predictor_periodM1               = 1;    //predictor period in minutes
 extern int     predictor_periodM15              = 15;   //predictor period in minutes
 extern int     predictor_periodH1               = 60;   //predictor period in minutes
+extern bool    closeAllOnFridays                = True; //close all orders on Friday 1hr before market closure
 
 extern string  Header3="----------Position Sizing Settings-----------";
 extern string  Lot_explanation                  = "If IsSizingOn = true, Lots variable will be ignored";
@@ -186,6 +192,7 @@ int     AIPredictionM1, AIPredictionM15, AIPredictionH1;
 int TimeMaxHold;       
 double    AIPriceChangePredictionM1, AIPriceChangePredictionM15, AIPriceChangePredictionH1;
 double    AIPriceTriggerPredictionM1, AIPriceTriggerPredictionM15, AIPriceTriggerPredictionH1;
+bool isFridayActive = false;
 
 //+------------------------------------------------------------------+
 //| End of Setup                                          
@@ -332,6 +339,18 @@ int start()
    if(FlagSell) CrossTriggered1=2;
    
    //Exit variables:
+   if(closeAllOnFridays)
+     {
+      //check if it's Friday and 1 hr before market closure
+      if(Hour()== 23 && DayOfWeek()== 5)
+        {
+         isFridayActive = true;
+        } else
+            {
+             isFridayActive = false;
+            }
+        
+     }
     /* Using timer to close trades
     
     //1. Predicted to Buy --> close the sell trade but wait until the order minimum holding time is expired
@@ -393,12 +412,12 @@ int start()
 
    // TDL 2: Setting up Exit rules. Modify the ExitSignal() function to suit your needs.
 
-   if(CountPosOrders(MagicNumber,OP_BUY)>=1 && ExitSignalOnTimer(2, MagicNumber, TimeMaxHold)==2)
+   if(CountPosOrders(MagicNumber,OP_BUY)>=1 && (ExitSignalOnTimer(2, MagicNumber, TimeMaxHold)==2 || isFridayActive == true))
      { // Close Long Positions
       CloseOrderPosition(OP_BUY, OnJournaling, MagicNumber, Slippage, P, RetryInterval); 
 
      }
-   if(CountPosOrders(MagicNumber,OP_SELL)>=1 && ExitSignalOnTimer(1, MagicNumber, TimeMaxHold)==1)
+   if(CountPosOrders(MagicNumber,OP_SELL)>=1 && (ExitSignalOnTimer(1, MagicNumber, TimeMaxHold)==1 || isFridayActive == true))
      { // Close Short Positions
       CloseOrderPosition(OP_SELL, OnJournaling, MagicNumber, Slippage, P, RetryInterval);
      }
@@ -409,7 +428,7 @@ int start()
       if(IsVolLimitBreached(IsVolLimitActivated,VolatilityMultiplier,ATRTimeframe,ATRPeriod)==False)
          if(IsMaxPositionsReached(MaxPositionsAllowed,MagicNumber,OnJournaling)==False)
            {
-            if(TradeAllowed && isMarketTypePolicyON && FlagBuy && EntrySignal(CrossTriggered1)==1)
+            if(!isFridayActive && TradeAllowed && isMarketTypePolicyON && FlagBuy && EntrySignal(CrossTriggered1)==1)
               { // Open Long Positions
                OrderNumber=OpenPositionMarket(OP_BUY,GetLot(IsSizingOn,Lots,Risk,YenPairAdjustFactor,Stop,P),Stop,Take,MagicNumber,Slippage,OnJournaling,P,IsECNbroker,MaxRetriesPerTick,RetryInterval);
    
@@ -430,7 +449,7 @@ int start()
              
               }
    
-            if(TradeAllowed && isMarketTypePolicyON && FlagSell && EntrySignal(CrossTriggered1)==2)
+            if(!isFridayActive && TradeAllowed && isMarketTypePolicyON && FlagSell && EntrySignal(CrossTriggered1)==2)
               { // Open Short Positions
                OrderNumber=OpenPositionMarket(OP_SELL,GetLot(IsSizingOn,Lots,Risk,YenPairAdjustFactor,Stop,P),Stop,Take,MagicNumber,Slippage,OnJournaling,P,IsECNbroker,MaxRetriesPerTick,RetryInterval);
    
