@@ -73,8 +73,8 @@ extern int     entryTriggerM1                   = 20;   //trade will start when 
 extern int     entryTriggerM15                  = 50;   //trade will start when predicted value will exceed this threshold
 extern int     entryTriggerM60                  = 100;  //trade will start when predicted value will exceed this threshold
 extern double  stopLossFactorM1                 = 2;    //SL factor from 0.75 up to 2 multiplied by predicted TP
-extern double  stopLossFactorM15                = 1; //SL factor from 0.75 up to 2 multiplied by predicted TP
-extern double  stopLossFactorM60                = 1; //SL factor from 0.75 up to 2 multiplied by predicted TP
+extern double  stopLossFactorM15                = 0.8; //SL factor from 0.75 up to 2 multiplied by predicted TP
+extern double  stopLossFactorM60                = 0.8; //SL factor from 0.75 up to 2 multiplied by predicted TP
 extern double  takeProfFactorM1                 = 1;    //TP factor from 0.25 to 1 multiplied by predicted TP
 extern double  takeProfFactorM15                = 1;    //TP factor from 0.25 to 1 multiplied by predicted TP
 extern double  takeProfFactorM60                = 1;    //TP factor from 0.25 to 1 multiplied by predicted TP
@@ -342,7 +342,7 @@ int start()
    if(closeAllOnFridays)
      {
       //check if it's Friday and 1 hr before market closure
-      if(Hour()== 23 && DayOfWeek()== 5)
+      if(Hour()== 22 && DayOfWeek()== 5)
         {
          isFridayActive = true;
         } else
