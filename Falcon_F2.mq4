@@ -9,7 +9,6 @@
 #include <08_TerminalNumber.mqh>
 #include <096_ReadMarketTypeFromCSV.mqh>
 #include <10_isNewBar.mqh>
-#include <12_ReadPredictionFromAI.mqh>
 #include <14_ReadPriceChangePredictionFromAI.mqh>
 #include <15_ReadPriceChangeTriggerFromAI.mqh>
 #include <16_LogMarketType.mqh>
@@ -50,6 +49,7 @@ Added option CloseOnFriday
 - inhibit opening of new positions
 # v 1.003
 Changed default options
+Removed direction mechanism
 
 
 */
@@ -193,7 +193,6 @@ bool FlagBuy, FlagSell;       //boolean flags to limit direction of trades
 datetime ReferenceTime;       //used for order history
 int     MyMarketType;         //used to recieve market status from AI
 //used to recieve prediction from AI 
-int     AIPredictionM1, AIPredictionM15, AIPredictionH1;  
 int TimeMaxHold;       
 double    AIPriceChangePredictionM1, AIPriceChangePredictionM15, AIPriceChangePredictionH1;
 double    AIPriceTriggerPredictionM1, AIPriceTriggerPredictionM15, AIPriceTriggerPredictionH1;
@@ -289,41 +288,36 @@ int start()
          
          
          //predicted using M1 Timeframe
-         AIPredictionM1 = ReadPredictionFromAI(Symbol(),predictor_periodM1);            //read predicted direction for the next trade
          AIPriceChangePredictionM1 = ReadPriceChangePredictionFromAI(Symbol(),predictor_periodM1); //price change prediction
          
          //predicted using M15 Timeframe
-         AIPredictionM15 = ReadPredictionFromAI(Symbol(),predictor_periodM15);          //read predicted direction for the next trade
          AIPriceChangePredictionM15 = ReadPriceChangePredictionFromAI(Symbol(),predictor_periodM15); //price change prediction
            //derived trigger level
            AIPriceTriggerPredictionM15 = ReadPriceChangeTriggerFromAI(predictor_periodM15);
            if(AIPriceTriggerPredictionM15 > 10) entryTriggerM15 = (int)AIPriceTriggerPredictionM15;
              
          //predicted using H1 Timeframe
-         AIPredictionH1 = ReadPredictionFromAI(Symbol(),predictor_periodH1);            //read predicted direction for the next trade
          AIPriceChangePredictionH1 = ReadPriceChangePredictionFromAI(Symbol(),predictor_periodH1); //price change prediction
             //derived trigger level
            AIPriceTriggerPredictionH1 = ReadPriceChangeTriggerFromAI(predictor_periodH1);
            if(AIPriceTriggerPredictionH1 > 10) entryTriggerM60 = (int)AIPriceTriggerPredictionH1;
          
          //do not trade when something is wrong...
-         if(AIPredictionM1 == TRADE_NONE || AIPredictionM15 == TRADE_NONE || AIPredictionH1 == TRADE_NONE)
+         if(AIPriceChangePredictionM1 == -1 || AIPriceTriggerPredictionM15 == -1 || AIPriceTriggerPredictionH1 == -1)
            {
              FlagBuy = False;
              FlagSell= False;
            }
       
-         FlagBuy   = GetTradeFlagCondition(AIPredictionM1, AIPredictionM15, AIPredictionH1, //predicted direction from DSS
-                           AIPriceChangePredictionM1,AIPriceChangePredictionM15,AIPriceChangePredictionH1, //predicted change from DSS
-                           entryTriggerM1, entryTriggerM15, entryTriggerM60,//absolute value to enter trade
-                           RobotBehavior,      //desired robot behaviour "scalper", "daily", "longterm"
-                           "buy"); //which direction to check "buy" "sell"
+         FlagBuy   = GetTradeFlagCondition(AIPriceChangePredictionM1,AIPriceChangePredictionM15,AIPriceChangePredictionH1, //predicted change from DSS
+                                           entryTriggerM1, entryTriggerM15, entryTriggerM60,//absolute value to enter trade
+                                           RobotBehavior,      //desired robot behaviour "scalper", "daily", "longterm"
+                                           "buy"); //which direction to check "buy" "sell"
              
-         FlagSell = GetTradeFlagCondition(AIPredictionM1, AIPredictionM15, AIPredictionH1, //predicted direction from DSS
-                           AIPriceChangePredictionM1,AIPriceChangePredictionM15,AIPriceChangePredictionH1, //predicted change from DSS
-                           entryTriggerM1, entryTriggerM15, entryTriggerM60,//absolute value to enter trade
-                           RobotBehavior,      //desired robot behaviour "scalper", "daily", "longterm"
-                           "sell"); //which direction to check "buy" "sell"
+         FlagSell = GetTradeFlagCondition(AIPriceChangePredictionM1,AIPriceChangePredictionM15,AIPriceChangePredictionH1, //predicted change from DSS
+                                          entryTriggerM1, entryTriggerM15, entryTriggerM60,//absolute value to enter trade
+                                          RobotBehavior,      //desired robot behaviour "scalper", "daily", "longterm"
+                                          "sell"); //which direction to check "buy" "sell"
                            
          TimeMaxHold = GetTimeMaxHold(TimeMaxHoldM1, TimeMaxHoldM15, TimeMaxHoldM60,    //time to hold order from the parameters
                                       RobotBehavior);
@@ -487,11 +481,11 @@ int start()
 //----
     //adding dashboard
     if(EnableDashboard==True) ShowDashboard("Magic Number", MagicNumber,
-                                            "Direction M1", AIPredictionM1,
+                                            "Direction M1", 1,
                                             "Change    M1", AIPriceChangePredictionM1,
-                                            "Direction M15", AIPredictionM15,
+                                            "Direction M15", 1,
                                             "Change    M15", AIPriceChangePredictionM15,
-                                            "Direction H1", AIPredictionH1,
+                                            "Direction H1", 1,
                                             "Change    H1", AIPriceChangePredictionH1); 
 
    return(0);
@@ -2392,8 +2386,7 @@ string GetErrorDescription(int error)
 //+------------------------------------------------------------------+
 //| GetTradeFlagCondition                                              
 //+------------------------------------------------------------------+
-bool GetTradeFlagCondition(int DirectionM1,int DirectionM15, int DirectionM60, //predicted direction from DSS
-                           double ExpectedMoveM1,double ExpectedMoveM15,double ExpectedMoveM60, //predicted change from DSS
+bool GetTradeFlagCondition(double ExpectedMoveM1,double ExpectedMoveM15,double ExpectedMoveM60, //predicted change from DSS
                            int EntryTradeTriggerM1, int EntryTradeTriggerM15, int EntryTradeTriggerM60,//absolute value to enter trade
                            string RobotType,      //desired robot behaviour "scalper", "daily", "longterm"
                            string DirectionCheck) //which direction to check "buy" "sell"
