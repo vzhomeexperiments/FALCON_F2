@@ -16,10 +16,10 @@
 #include <17_CheckIfMarketTypePolicyIsOn.mqh>
 
 #property copyright "Copyright 2015, Black Algo Technologies Pte Ltd"
-#property copyright "Copyright 2018, Vladimir Zhbanko"
+#property copyright "Copyright 2019, Vladimir Zhbanko"
 #property link      "lucas@blackalgotechnologies.com"
 #property link      "https://vladdsm.github.io/myblog_attempt/"
-#property version   "1.002"  
+#property version   "1.003"  
 #property strict
 /* 
 
@@ -48,6 +48,10 @@ Falcon F2:
 Added option CloseOnFriday
 - closing all positions 1hr before events
 - inhibit opening of new positions
+# v 1.003
+Changed default options
+
+
 */
 
 //+------------------------------------------------------------------+
@@ -59,16 +63,16 @@ extern int     TerminalType                     = 1;         //0 mean slave, 1 m
 extern bool    R_Management                     = true;      //R_Management true will enable Decision Support Centre (using R)
 extern int     Slippage                         = 3; // In Pips
 extern bool    IsECNbroker                      = false; // Is your broker an ECN
-extern bool    OnJournaling                     = true; // Add EA updates in the Journal Tab
+extern bool    OnJournaling                     = false; // Add EA updates in the Journal Tab
 extern bool    EnableDashboard                  = True; // Turn on Dashboard
 
 extern string  Header2="----------Trading Rules Variables -----------";
-extern string  RobotBehavior                    = "longterm"; //"scalper", "daily", "longterm"
+extern string  RobotBehavior                    = "daily"; //"scalper", "daily", "longterm"
 extern bool    usePredictedSL                   = True;
 extern bool    usePredictedTP                   = True;
 extern int     TimeMaxHoldM1                    = 75; //max order close time in minutes
 extern int     TimeMaxHoldM15                   = 1125; //max order close time in minutes
-extern int     TimeMaxHoldM60                   = 6000; //max order close time in minutes
+extern int     TimeMaxHoldM60                   = 4500; //max order close time in minutes
 extern int     entryTriggerM1                   = 20;   //trade will start when predicted value will exceed this threshold
 extern int     entryTriggerM15                  = 50;   //trade will start when predicted value will exceed this threshold
 extern int     entryTriggerM60                  = 100;  //trade will start when predicted value will exceed this threshold
@@ -82,6 +86,7 @@ extern int     predictor_periodM1               = 1;    //predictor period in mi
 extern int     predictor_periodM15              = 15;   //predictor period in minutes
 extern int     predictor_periodH1               = 60;   //predictor period in minutes
 extern bool    closeAllOnFridays                = True; //close all orders on Friday 1hr before market closure
+extern bool    use_market_type                  = True; //use market type trading policy
 
 extern string  Header3="----------Position Sizing Settings-----------";
 extern string  Lot_explanation                  = "If IsSizingOn = true, Lots variable will be ignored";
@@ -95,12 +100,12 @@ extern string  Header4="----------TP & SL Settings-----------";
 extern bool    UseFixedStopLoss                 = True; // If this is false and IsSizingOn = True, sizing algo will not be able to calculate correct lot size. 
 extern double  FixedStopLoss                    = 0; // Hard Stop in Pips. Will be overridden if vol-based SL is true 
 extern bool    IsVolatilityStopOn               = True;
-extern double  VolBasedSLMultiplier             = 3; // Stop Loss Amount in units of Volatility
+extern double  VolBasedSLMultiplier             = 4; // Stop Loss Amount in units of Volatility
 
 extern bool    UseFixedTakeProfit               = True;
 extern double  FixedTakeProfit                  = 0; // Hard Take Profit in Pips. Will be overridden if vol-based TP is true 
 extern bool    IsVolatilityTakeProfitOn         = True;
-extern double  VolBasedTPMultiplier             = 4; // Take Profit Amount in units of Volatility
+extern double  VolBasedTPMultiplier             = 6; // Take Profit Amount in units of Volatility
 
 extern string  Header5="----------Hidden TP & SL Settings-----------";
 
@@ -274,10 +279,13 @@ int start()
          OrderProfitToCSV(T_Num(MagicNumber));                        //write previous orders profit results for auto analysis in R
          MyMarketType = ReadMarketFromCSV(Symbol(), 15);            //read analytical output from the Decision Support System
          //get the Reinforcement Learning policy for specific Market Type
-         if(TerminalType == 0)
+         if(TerminalType == 0 && use_market_type == true)
            {
             isMarketTypePolicyON = CheckIfMarketTypePolicyIsOn(MagicNumber, MyMarketType);
-           }
+           } else
+               {
+                isMarketTypePolicyON = true;
+               }
          
          
          //predicted using M1 Timeframe
