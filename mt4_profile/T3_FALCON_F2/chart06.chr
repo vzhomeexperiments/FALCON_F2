@@ -1,0 +1,193 @@
+<chart>
+id=131185925827133839
+comment=
+symbol=USDCAD
+period=15
+leftpos=45376
+digits=5
+scale=1
+graph=1
+fore=1
+grid=0
+volume=0
+scroll=1
+shift=1
+ohlc=1
+one_click=0
+one_click_btn=1
+askline=0
+days=1
+descriptions=0
+shift_size=20
+fixed_pos=0
+window_left=0
+window_top=0
+window_right=363
+window_bottom=431
+window_type=1
+background_color=16777215
+foreground_color=0
+barup_color=0
+bardown_color=0
+bullcandle_color=16777215
+bearcandle_color=0
+chartline_color=0
+volumes_color=32768
+grid_color=12632256
+askline_color=17919
+stops_color=17919
+
+<window>
+height=148
+fixed_height=0
+<indicator>
+name=main
+<object>
+type=22
+object_name=#166625296 sell 0.02 USDCAD at 1.36373
+period_flags=0
+create_time=1545925500
+description= 1(#8132305) (8132305)
+color=32768
+weight=1
+background=0
+symbol_code=1
+anchor_pos=0
+filling=0
+selectable=1
+hidden=0
+zorder=0
+time_0=1545932700
+value_0=1.363730
+</object>
+<object>
+type=22
+object_name=#166625296 sell 0.02 USDCAD at 1.36373 stop loss at 1.37184
+period_flags=0
+create_time=1545925500
+color=255
+weight=1
+background=0
+symbol_code=4
+anchor_pos=0
+filling=0
+selectable=1
+hidden=0
+zorder=0
+time_0=1545932700
+value_0=1.371840
+</object>
+<object>
+type=22
+object_name=#166625296 sell 0.02 USDCAD at 1.36373 take profit at 1.35562
+period_flags=0
+create_time=1545925500
+color=16711680
+weight=1
+background=0
+symbol_code=4
+anchor_pos=0
+filling=0
+selectable=1
+hidden=0
+zorder=0
+time_0=1545932700
+value_0=1.355620
+</object>
+</indicator>
+</window>
+
+<expert>
+name=FALCON_F2\Falcon_F2
+flags=343
+window_num=0
+<inputs>
+Header1=----------EA General Settings-----------
+MagicNumber=8139305
+TerminalType=0
+R_Management=true
+Slippage=3
+IsECNbroker=false
+OnJournaling=false
+EnableDashboard=true
+Header2=----------Trading Rules Variables -----------
+RobotBehavior=daily
+usePredictedSL=true
+usePredictedTP=true
+TimeMaxHoldM1=75
+TimeMaxHoldM15=1125
+TimeMaxHoldM60=4500
+entryTriggerM1=20
+entryTriggerM15=50
+entryTriggerM60=100
+stopLossFactorM1=2.0
+stopLossFactorM15=0.8
+stopLossFactorM60=0.8
+takeProfFactorM1=1.0
+takeProfFactorM15=1.0
+takeProfFactorM60=1.0
+predictor_periodM1=1
+predictor_periodM15=15
+predictor_periodH1=60
+closeAllOnFridays=true
+use_market_type=true
+Header3=----------Position Sizing Settings-----------
+Lot_explanation=If IsSizingOn = true, Lots variable will be ignored
+Lots=0.0
+IsSizingOn=true
+Risk=1.0
+MaxPositionsAllowed=1
+Header4=----------TP & SL Settings-----------
+UseFixedStopLoss=true
+FixedStopLoss=0.0
+IsVolatilityStopOn=true
+VolBasedSLMultiplier=4.0
+UseFixedTakeProfit=true
+FixedTakeProfit=0.0
+IsVolatilityTakeProfitOn=true
+VolBasedTPMultiplier=6.0
+Header5=----------Hidden TP & SL Settings-----------
+UseHiddenStopLoss=false
+FixedStopLoss_Hidden=0.0
+IsVolatilityStopLossOn_Hidden=false
+VolBasedSLMultiplier_Hidden=0.0
+UseHiddenTakeProfit=false
+FixedTakeProfit_Hidden=0.0
+IsVolatilityTakeProfitOn_Hidden=false
+VolBasedTPMultiplier_Hidden=0.0
+Header6=----------Breakeven Stops Settings-----------
+UseBreakevenStops=false
+BreakevenBuffer=0.0
+Header7=----------Hidden Breakeven Stops Settings-----------
+UseHiddenBreakevenStops=false
+BreakevenBuffer_Hidden=0.0
+Header8=----------Trailing Stops Settings-----------
+UseTrailingStops=false
+TrailingStopDistance=0.0
+TrailingStopBuffer=0.0
+Header9=----------Hidden Trailing Stops Settings-----------
+UseHiddenTrailingStops=false
+TrailingStopDistance_Hidden=0.0
+TrailingStopBuffer_Hidden=0.0
+Header10=----------Volatility Trailing Stops Settings-----------
+UseVolTrailingStops=false
+VolTrailingDistMultiplier=0.0
+VolTrailingBuffMultiplier=0.0
+Header11=----------Hidden Volatility Trailing Stops Settings-----------
+UseHiddenVolTrailing=false
+VolTrailingDistMultiplier_Hidden=0.0
+VolTrailingBuffMultiplier_Hidden=0.0
+Header12=----------Volatility Measurement Settings-----------
+atr_period=14
+Header13=----------Set Max Loss Limit-----------
+IsLossLimitActivated=false
+LossLimitPercent=50.0
+Header14=----------Set Max Volatility Limit-----------
+IsVolLimitActivated=false
+VolatilityMultiplier=3.0
+ATRTimeframe=60
+ATRPeriod=14
+</inputs>
+</expert>
+</chart>
+
