@@ -1,9 +1,9 @@
 <chart>
 id=131185925660681572
-comment=
+comment=Trade is allowed
 symbol=AUDNZD
 period=15
-leftpos=55510
+leftpos=56950
 digits=5
 scale=8
 graph=1
@@ -1110,6 +1110,110 @@ zorder=0
 time_0=1553679000
 value_0=1.039840
 </object>
+<object>
+type=22
+object_name=#167413968 buy 0.01 AUDNZD at 1.05986
+period_flags=0
+create_time=1555318800
+description= 0(#8139114) (8139114)
+color=16711680
+weight=1
+background=0
+symbol_code=1
+anchor_pos=0
+filling=0
+selectable=1
+hidden=0
+zorder=0
+time_0=1555329600
+value_0=1.059860
+</object>
+<object>
+type=22
+object_name=#167413968 buy 0.01 AUDNZD at 1.05986 stop loss at 1.05823
+period_flags=0
+create_time=1555318800
+color=255
+weight=1
+background=0
+symbol_code=4
+anchor_pos=0
+filling=0
+selectable=1
+hidden=0
+zorder=0
+time_0=1555329600
+value_0=1.058230
+</object>
+<object>
+type=22
+object_name=#167413968 buy 0.01 AUDNZD at 1.05986 take profit at 1.06190
+period_flags=0
+create_time=1555318800
+color=16711680
+weight=1
+background=0
+symbol_code=4
+anchor_pos=0
+filling=0
+selectable=1
+hidden=0
+zorder=0
+time_0=1555329600
+value_0=1.061900
+</object>
+<object>
+type=22
+object_name=#167414156 buy 0.01 AUDNZD at 1.06008
+period_flags=0
+create_time=1555319700
+description= 0(#8139114) (8139114)
+color=16711680
+weight=1
+background=0
+symbol_code=1
+anchor_pos=0
+filling=0
+selectable=1
+hidden=0
+zorder=0
+time_0=1555330500
+value_0=1.060080
+</object>
+<object>
+type=22
+object_name=#167414156 buy 0.01 AUDNZD at 1.06008 stop loss at 1.05845
+period_flags=0
+create_time=1555319700
+color=255
+weight=1
+background=0
+symbol_code=4
+anchor_pos=0
+filling=0
+selectable=1
+hidden=0
+zorder=0
+time_0=1555330500
+value_0=1.058450
+</object>
+<object>
+type=22
+object_name=#167414156 buy 0.01 AUDNZD at 1.06008 take profit at 1.06212
+period_flags=0
+create_time=1555319700
+color=16711680
+weight=1
+background=0
+symbol_code=4
+anchor_pos=0
+filling=0
+selectable=1
+hidden=0
+zorder=0
+time_0=1555330500
+value_0=1.062120
+</object>
 </indicator>
 </window>
 
@@ -1128,8 +1232,8 @@ OnJournaling=false
 EnableDashboard=true
 Header2=----------Trading Rules Variables -----------
 RobotBehavior=daily
-usePredictedSL=true
-usePredictedTP=true
+usePredictedSL=false
+usePredictedTP=false
 TimeMaxHoldM1=75
 TimeMaxHoldM15=1125
 TimeMaxHoldM60=4500

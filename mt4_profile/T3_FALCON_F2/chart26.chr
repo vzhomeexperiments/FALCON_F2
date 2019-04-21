@@ -1,9 +1,9 @@
 <chart>
 id=131185925827133859
-comment=
+comment=Trade is not allowed
 symbol=GBPCAD
 period=15
-leftpos=43535
+leftpos=44975
 digits=5
 scale=8
 graph=1
@@ -512,8 +512,8 @@ OnJournaling=false
 EnableDashboard=true
 Header2=----------Trading Rules Variables -----------
 RobotBehavior=daily
-usePredictedSL=true
-usePredictedTP=true
+usePredictedSL=false
+usePredictedTP=false
 TimeMaxHoldM1=75
 TimeMaxHoldM15=1125
 TimeMaxHoldM60=4500

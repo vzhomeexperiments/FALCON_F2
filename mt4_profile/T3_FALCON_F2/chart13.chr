@@ -1,9 +1,9 @@
 <chart>
 id=131185925827133846
-comment=
+comment=Trade is not allowed
 symbol=CADJPY
 period=15
-leftpos=45582
+leftpos=47022
 digits=3
 scale=8
 graph=1
@@ -564,8 +564,8 @@ OnJournaling=false
 EnableDashboard=true
 Header2=----------Trading Rules Variables -----------
 RobotBehavior=daily
-usePredictedSL=true
-usePredictedTP=true
+usePredictedSL=false
+usePredictedTP=false
 TimeMaxHoldM1=75
 TimeMaxHoldM15=1125
 TimeMaxHoldM60=4500

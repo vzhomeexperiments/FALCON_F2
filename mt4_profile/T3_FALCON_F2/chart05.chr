@@ -1,9 +1,9 @@
 <chart>
 id=131185925827133838
-comment=
+comment=Trade is not allowed
 symbol=USDJPY
 period=15
-leftpos=56347
+leftpos=57787
 digits=3
 scale=8
 graph=1
@@ -252,8 +252,8 @@ OnJournaling=false
 EnableDashboard=true
 Header2=----------Trading Rules Variables -----------
 RobotBehavior=daily
-usePredictedSL=true
-usePredictedTP=true
+usePredictedSL=false
+usePredictedTP=false
 TimeMaxHoldM1=75
 TimeMaxHoldM15=1125
 TimeMaxHoldM60=4500

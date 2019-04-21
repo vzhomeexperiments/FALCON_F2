@@ -1,9 +1,9 @@
 <chart>
 id=131185925827133854
-comment=
+comment=Trade is not allowed
 symbol=EURCAD
 period=15
-leftpos=44047
+leftpos=45487
 digits=5
 scale=8
 graph=1
@@ -304,8 +304,8 @@ OnJournaling=false
 EnableDashboard=true
 Header2=----------Trading Rules Variables -----------
 RobotBehavior=daily
-usePredictedSL=true
-usePredictedTP=true
+usePredictedSL=false
+usePredictedTP=false
 TimeMaxHoldM1=75
 TimeMaxHoldM15=1125
 TimeMaxHoldM60=4500

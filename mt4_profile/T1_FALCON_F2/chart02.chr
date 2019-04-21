@@ -1,9 +1,9 @@
 <chart>
 id=131185925660681491
-comment=
+comment=Trade is allowed
 symbol=USDCHF
 period=15
-leftpos=55282
+leftpos=56722
 digits=5
 scale=1
 graph=1
@@ -198,6 +198,110 @@ zorder=0
 time_0=1553604302
 value_0=0.990810
 </object>
+<object>
+type=22
+object_name=#167415807 buy 0.01 USDCHF at 1.00257
+period_flags=0
+create_time=1555333200
+description= 0(#8139101) (8139101)
+color=16711680
+weight=1
+background=0
+symbol_code=1
+anchor_pos=0
+filling=0
+selectable=1
+hidden=0
+zorder=0
+time_0=1555344000
+value_0=1.002570
+</object>
+<object>
+type=22
+object_name=#167415807 buy 0.01 USDCHF at 1.00257 stop loss at 1.00086
+period_flags=0
+create_time=1555333200
+color=255
+weight=1
+background=0
+symbol_code=4
+anchor_pos=0
+filling=0
+selectable=1
+hidden=0
+zorder=0
+time_0=1555344000
+value_0=1.000860
+</object>
+<object>
+type=22
+object_name=#167415807 buy 0.01 USDCHF at 1.00257 take profit at 1.00471
+period_flags=0
+create_time=1555333200
+color=16711680
+weight=1
+background=0
+symbol_code=4
+anchor_pos=0
+filling=0
+selectable=1
+hidden=0
+zorder=0
+time_0=1555344000
+value_0=1.004710
+</object>
+<object>
+type=22
+object_name=#167417074 buy 0.01 USDCHF at 1.00311
+period_flags=0
+create_time=1555339500
+description= 0(#8139101) (8139101)
+color=16711680
+weight=1
+background=0
+symbol_code=1
+anchor_pos=0
+filling=0
+selectable=1
+hidden=0
+zorder=0
+time_0=1555350300
+value_0=1.003110
+</object>
+<object>
+type=22
+object_name=#167417074 buy 0.01 USDCHF at 1.00311 stop loss at 1.00150
+period_flags=0
+create_time=1555339500
+color=255
+weight=1
+background=0
+symbol_code=4
+anchor_pos=0
+filling=0
+selectable=1
+hidden=0
+zorder=0
+time_0=1555350300
+value_0=1.001500
+</object>
+<object>
+type=22
+object_name=#167417074 buy 0.01 USDCHF at 1.00311 take profit at 1.00512
+period_flags=0
+create_time=1555339500
+color=16711680
+weight=1
+background=0
+symbol_code=4
+anchor_pos=0
+filling=0
+selectable=1
+hidden=0
+zorder=0
+time_0=1555350300
+value_0=1.005120
+</object>
 </indicator>
 </window>
 
@@ -216,8 +320,8 @@ OnJournaling=false
 EnableDashboard=true
 Header2=----------Trading Rules Variables -----------
 RobotBehavior=daily
-usePredictedSL=true
-usePredictedTP=true
+usePredictedSL=false
+usePredictedTP=false
 TimeMaxHoldM1=75
 TimeMaxHoldM15=1125
 TimeMaxHoldM60=4500

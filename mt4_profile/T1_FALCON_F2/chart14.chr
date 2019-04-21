@@ -1,9 +1,9 @@
 <chart>
 id=131185925660681571
-comment=
+comment=Trade is allowed
 symbol=GBPJPY
 period=15
-leftpos=55489
+leftpos=56929
 digits=3
 scale=8
 graph=1
@@ -3486,6 +3486,110 @@ time_1=1553860800
 value_1=144.262000
 ray=0
 </object>
+<object>
+type=22
+object_name=#167414875 buy 0.01 GBPJPY at 146.781
+period_flags=0
+create_time=1555326000
+description= 0(#8139113) (8139113)
+color=16711680
+weight=1
+background=0
+symbol_code=1
+anchor_pos=0
+filling=0
+selectable=1
+hidden=0
+zorder=0
+time_0=1555336800
+value_0=146.781000
+</object>
+<object>
+type=22
+object_name=#167414875 buy 0.01 GBPJPY at 146.781 stop loss at 146.517
+period_flags=0
+create_time=1555326000
+color=255
+weight=1
+background=0
+symbol_code=4
+anchor_pos=0
+filling=0
+selectable=1
+hidden=0
+zorder=0
+time_0=1555336800
+value_0=146.517000
+</object>
+<object>
+type=22
+object_name=#167414875 buy 0.01 GBPJPY at 146.781 take profit at 147.111
+period_flags=0
+create_time=1555326000
+color=16711680
+weight=1
+background=0
+symbol_code=4
+anchor_pos=0
+filling=0
+selectable=1
+hidden=0
+zorder=0
+time_0=1555336800
+value_0=147.111000
+</object>
+<object>
+type=22
+object_name=#167415070 buy 0.01 GBPJPY at 146.808
+period_flags=0
+create_time=1555326900
+description= 0(#8139113) (8139113)
+color=16711680
+weight=1
+background=0
+symbol_code=1
+anchor_pos=0
+filling=0
+selectable=1
+hidden=0
+zorder=0
+time_0=1555337700
+value_0=146.808000
+</object>
+<object>
+type=22
+object_name=#167415070 buy 0.01 GBPJPY at 146.808 stop loss at 146.544
+period_flags=0
+create_time=1555326900
+color=255
+weight=1
+background=0
+symbol_code=4
+anchor_pos=0
+filling=0
+selectable=1
+hidden=0
+zorder=0
+time_0=1555337700
+value_0=146.544000
+</object>
+<object>
+type=22
+object_name=#167415070 buy 0.01 GBPJPY at 146.808 take profit at 147.138
+period_flags=0
+create_time=1555326900
+color=16711680
+weight=1
+background=0
+symbol_code=4
+anchor_pos=0
+filling=0
+selectable=1
+hidden=0
+zorder=0
+time_0=1555337700
+value_0=147.138000
+</object>
 </indicator>
 </window>
 
@@ -3504,8 +3608,8 @@ OnJournaling=false
 EnableDashboard=true
 Header2=----------Trading Rules Variables -----------
 RobotBehavior=daily
-usePredictedSL=true
-usePredictedTP=true
+usePredictedSL=false
+usePredictedTP=false
 TimeMaxHoldM1=75
 TimeMaxHoldM15=1125
 TimeMaxHoldM60=4500

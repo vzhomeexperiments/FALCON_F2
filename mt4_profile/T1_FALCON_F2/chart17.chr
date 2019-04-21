@@ -1,9 +1,9 @@
 <chart>
 id=131185925660681574
-comment=
+comment=Trade is allowed
 symbol=AUDCHF
 period=15
-leftpos=55510
+leftpos=56950
 digits=5
 scale=8
 graph=1
@@ -674,6 +674,58 @@ time_1=1553897700
 value_1=0.707080
 ray=0
 </object>
+<object>
+type=22
+object_name=#167415804 buy 0.01 AUDCHF at 0.71986
+period_flags=0
+create_time=1555333200
+description= 0(#8139116) (8139116)
+color=16711680
+weight=1
+background=0
+symbol_code=1
+anchor_pos=0
+filling=0
+selectable=1
+hidden=0
+zorder=0
+time_0=1555344000
+value_0=0.719860
+</object>
+<object>
+type=22
+object_name=#167415804 buy 0.01 AUDCHF at 0.71986 stop loss at 0.71780
+period_flags=0
+create_time=1555333200
+color=255
+weight=1
+background=0
+symbol_code=4
+anchor_pos=0
+filling=0
+selectable=1
+hidden=0
+zorder=0
+time_0=1555344000
+value_0=0.717800
+</object>
+<object>
+type=22
+object_name=#167415804 buy 0.01 AUDCHF at 0.71986 take profit at 0.72244
+period_flags=0
+create_time=1555333200
+color=16711680
+weight=1
+background=0
+symbol_code=4
+anchor_pos=0
+filling=0
+selectable=1
+hidden=0
+zorder=0
+time_0=1555344000
+value_0=0.722440
+</object>
 </indicator>
 </window>
 
@@ -692,8 +744,8 @@ OnJournaling=false
 EnableDashboard=true
 Header2=----------Trading Rules Variables -----------
 RobotBehavior=daily
-usePredictedSL=true
-usePredictedTP=true
+usePredictedSL=false
+usePredictedTP=false
 TimeMaxHoldM1=75
 TimeMaxHoldM15=1125
 TimeMaxHoldM60=4500

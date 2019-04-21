@@ -1,9 +1,9 @@
 <chart>
 id=131185925660681580
-comment=
+comment=Trade is allowed
 symbol=NZDJPY
 period=15
-leftpos=55510
+leftpos=56950
 digits=3
 scale=8
 graph=1
@@ -736,8 +736,8 @@ OnJournaling=false
 EnableDashboard=true
 Header2=----------Trading Rules Variables -----------
 RobotBehavior=daily
-usePredictedSL=true
-usePredictedTP=true
+usePredictedSL=false
+usePredictedTP=false
 TimeMaxHoldM1=75
 TimeMaxHoldM15=1125
 TimeMaxHoldM60=4500

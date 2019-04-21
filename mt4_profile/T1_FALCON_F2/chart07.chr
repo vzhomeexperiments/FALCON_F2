@@ -1,9 +1,9 @@
 <chart>
 id=131185925660681564
-comment=
+comment=Trade is allowed
 symbol=AUDUSD
 period=15
-leftpos=75305
+leftpos=76745
 digits=5
 scale=8
 graph=1
@@ -1760,8 +1760,8 @@ OnJournaling=false
 EnableDashboard=true
 Header2=----------Trading Rules Variables -----------
 RobotBehavior=daily
-usePredictedSL=true
-usePredictedTP=true
+usePredictedSL=false
+usePredictedTP=false
 TimeMaxHoldM1=75
 TimeMaxHoldM15=1125
 TimeMaxHoldM60=4500

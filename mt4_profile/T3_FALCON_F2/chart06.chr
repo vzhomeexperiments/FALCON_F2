@@ -1,9 +1,9 @@
 <chart>
 id=131185925827133839
-comment=
+comment=Trade is not allowed
 symbol=USDCAD
 period=15
-leftpos=45376
+leftpos=46816
 digits=5
 scale=1
 graph=1
@@ -112,8 +112,8 @@ OnJournaling=false
 EnableDashboard=true
 Header2=----------Trading Rules Variables -----------
 RobotBehavior=daily
-usePredictedSL=true
-usePredictedTP=true
+usePredictedSL=false
+usePredictedTP=false
 TimeMaxHoldM1=75
 TimeMaxHoldM15=1125
 TimeMaxHoldM60=4500
