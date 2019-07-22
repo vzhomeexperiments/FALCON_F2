@@ -18,7 +18,7 @@
 #property copyright "Copyright 2019, Vladimir Zhbanko"
 #property link      "lucas@blackalgotechnologies.com"
 #property link      "https://vladdsm.github.io/myblog_attempt/"
-#property version   "1.003"  
+#property version   "1.004"  
 #property strict
 /* 
 
@@ -50,7 +50,8 @@ Added option CloseOnFriday
 # v 1.003
 Changed default options
 Removed direction mechanism
-
+# v 1.004
+Add Market Type indication on the dashbouard
 
 */
 
@@ -481,6 +482,7 @@ int start()
 //----
     //adding dashboard
     if(EnableDashboard==True) ShowDashboard("Magic Number", MagicNumber,
+                                            "Market Type", MyMarketType,
                                             "Direction M1", 1,
                                             "Change    M1", AIPriceChangePredictionM1,
                                             "Direction M15", 1,
@@ -703,7 +705,7 @@ bool IsMaxPositionsReached(int MaxPositions,int Magic,bool Journaling)
 
 // This function checks the number of positions we are holding against the maximum allowed 
 
-   int result=False;
+   bool result=False;
    if(CountPosOrders(Magic,OP_BUY)+CountPosOrders(Magic,OP_SELL)>MaxPositions) 
      {
       result=True;
@@ -2521,47 +2523,71 @@ int GetTimeMaxHold(int timeHoldm1, int timeHoldm15, int timeHoldm60,    //time t
 //| Dashboard - Comment Version                                    
 //+------------------------------------------------------------------+
 void ShowDashboard(string Descr0, int magic,
-                   string Descr1, int Param1,
-                   string Descr2, double Param2,
-                   string Descr3, int Param3,
-                   string Descr4, double Param4,
-                   string Descr5, int Param5,
-                   string Descr6, double Param6
+                   string Descr1, int my_market_type,
+                   string Descr2, int Param1,
+                   string Descr3, double Param2,
+                   string Descr4, int Param3,
+                   string Descr5, double Param4,
+                   string Descr6, int Param5,
+                   string Descr7, double Param6
                      ) 
   {
 // Purpose: This function creates a dashboard showing information on your EA using comments function
 // Type: Customisable 
 // Modify this function to suit your trading robot
 //----
+/*
+Conversion of Market Types
+if(res == "0" || res == "-1") {marketType = MARKET_NONE; return(marketType); }
+   if(res == "1" || res == "BUN"){marketType = MARKET_BUN;  return(marketType); }
+   if(res == "2" || res == "BUV"){marketType = MARKET_BUV;  return(marketType); }
+   if(res == "3" || res == "BEN"){marketType = MARKET_BEN;  return(marketType); }
+   if(res == "4" || res == "BEV"){marketType = MARKET_BEV;  return(marketType); }
+   if(res == "5" || res == "RAN"){marketType = MARKET_RAN;  return(marketType); }
+   if(res == "6" || res == "RAV"){marketType = MARKET_RAV;  return(marketType); }
+*/
 
 string new_line = "\n"; // "\n" or "\n\n" will move the comment to new line
 string space = ": ";    // generate space
 string underscore = "________________________________";
+string market_type;
+
+//Convert Integer value of Market Type to String value
+if(my_market_type == 0) market_type = "ERR";
+if(my_market_type == 1) market_type = "BUN";
+if(my_market_type == 2) market_type = "BUV";
+if(my_market_type == 3) market_type = "BEN";
+if(my_market_type == 4) market_type = "BEV";
+if(my_market_type == 5) market_type = "RAN";
+if(my_market_type == 6) market_type = "RAV";
+
 
 Comment(
         new_line 
       + Descr0 + space + IntegerToString(magic)
-      + new_line
-      + underscore  
+      + new_line      
+      + Descr1 + space + market_type
       + new_line 
+      + underscore  
       + new_line
-      + Descr1 + space + IntegerToString(Param1)
       + new_line
-      + Descr2 + space + DoubleToString(Param2, 1)
+      + Descr2 + space + IntegerToString(Param1)
+      + new_line
+      + Descr3 + space + DoubleToString(Param2, 1)
       + new_line        
       + underscore  
       + new_line 
       + new_line
-      + Descr3 + space + IntegerToString(Param3)
+      + Descr4 + space + IntegerToString(Param3)
       + new_line
-      + Descr4 + space + DoubleToString(Param4, 1)
+      + Descr5 + space + DoubleToString(Param4, 1)
       + new_line        
       + underscore  
       + new_line 
       + new_line
-      + Descr5 + space + IntegerToString(Param5)
+      + Descr6 + space + IntegerToString(Param5)
       + new_line
-      + Descr6 + space + DoubleToString(Param6, 1)
+      + Descr7 + space + DoubleToString(Param6, 1)
       + new_line        
       + underscore  
       + "");
