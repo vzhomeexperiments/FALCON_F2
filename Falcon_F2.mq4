@@ -18,7 +18,7 @@
 #property copyright "Copyright 2019, Vladimir Zhbanko"
 #property link      "lucas@blackalgotechnologies.com"
 #property link      "https://vladdsm.github.io/myblog_attempt/"
-#property version   "1.004"  
+#property version   "1.005"  
 #property strict
 /* 
 
@@ -52,14 +52,17 @@ Changed default options
 Removed direction mechanism
 # v 1.004
 Add Market Type indication on the dashbouard
-
+# v 1.005
+Use only 2 models to entry
+Changed base parameters
+Modified exit rules
 */
 
 //+------------------------------------------------------------------+
 //| Setup                                               
 //+------------------------------------------------------------------+
 extern string  Header1="----------EA General Settings-----------";
-extern int     MagicNumber                      = 8139201;
+extern int     MagicNumber                      = 9139201;
 extern int     TerminalType                     = 1;         //0 mean slave, 1 mean master
 extern bool    R_Management                     = true;      //R_Management true will enable Decision Support Centre (using R)
 extern int     Slippage                         = 3; // In Pips
@@ -68,9 +71,9 @@ extern bool    OnJournaling                     = false; // Add EA updates in th
 extern bool    EnableDashboard                  = True; // Turn on Dashboard
 
 extern string  Header2="----------Trading Rules Variables -----------";
-extern string  RobotBehavior                    = "daily"; //"scalper", "daily", "longterm"
-extern bool    usePredictedSL                   = True;
-extern bool    usePredictedTP                   = True;
+extern string  RobotBehavior                    = "daily"; //"scalper", "daily", "longterm" will affect order closure time
+extern bool    usePredictedSL                   = False;
+extern bool    usePredictedTP                   = False;
 extern int     TimeMaxHoldM1                    = 75; //max order close time in minutes
 extern int     TimeMaxHoldM15                   = 1125; //max order close time in minutes
 extern int     TimeMaxHoldM60                   = 4500; //max order close time in minutes
@@ -345,7 +348,7 @@ int start()
    if(closeAllOnFridays)
      {
       //check if it's Friday and 1 hr before market closure
-      if(Hour()== 22 && DayOfWeek()== 5)
+      if(Hour()== 23 && DayOfWeek()== 5)
         {
          isFridayActive = true;
         } else
@@ -415,12 +418,12 @@ int start()
 
    // TDL 2: Setting up Exit rules. Modify the ExitSignal() function to suit your needs.
 
-   if(CountPosOrders(MagicNumber,OP_BUY)>=1 && (ExitSignalOnTimer(2, MagicNumber, TimeMaxHold)==2 || isFridayActive == true))
+   if(CountPosOrders(MagicNumber,OP_BUY)>=1 && (ExitSignalOnAI(2, MagicNumber, AIPriceChangePredictionM15)==2 || isFridayActive == true))
      { // Close Long Positions
       CloseOrderPosition(OP_BUY, OnJournaling, MagicNumber, Slippage, P, RetryInterval); 
 
      }
-   if(CountPosOrders(MagicNumber,OP_SELL)>=1 && (ExitSignalOnTimer(1, MagicNumber, TimeMaxHold)==1 || isFridayActive == true))
+   if(CountPosOrders(MagicNumber,OP_SELL)>=1 && (ExitSignalOnAI(1, MagicNumber, AIPriceChangePredictionM15)==1 || isFridayActive == true))
      { // Close Short Positions
       CloseOrderPosition(OP_SELL, OnJournaling, MagicNumber, Slippage, P, RetryInterval);
      }
@@ -504,7 +507,9 @@ int start()
 
 Content:
 1) EntrySignal
-2) ExitSignal
+2.1) ExitSignal
+2.2) ExitSignalOnTimer
+2.3) ExitSignalOnAI
 3) GetLot
 4) CheckLot
 5) CountPosOrders
@@ -573,6 +578,33 @@ int EntrySignal(int CrossOccurred)
 //+------------------------------------------------------------------+
 //| Exit SIGNAL                                                      |
 //+------------------------------------------------------------------+
+int ExitSignal(int CrossOccurred)
+  {
+// Type: Customisable 
+// Modify this function to suit your trading robot
+
+// This function checks for exit signals
+
+   int   ExitOutput=0;
+
+   if(CrossOccurred==1)
+     {
+      ExitOutput=1;
+     }
+
+   if(CrossOccurred==2)
+     {
+      ExitOutput=2;
+     }
+
+   return(ExitOutput);
+  }
+//+------------------------------------------------------------------+
+//| End of Exit SIGNAL                                               
+//+------------------------------------------------------------------+
+//+------------------------------------------------------------------+
+//| Exit SIGNAL ON TIMER                                             |
+//+------------------------------------------------------------------+
 int ExitSignalOnTimer(int CrossOccurred, int Magic, int MaxOrderCloseTimer)
   {
 // Type: Customisable 
@@ -620,7 +652,61 @@ int ExitSignalOnTimer(int CrossOccurred, int Magic, int MaxOrderCloseTimer)
    return(ExitOutput);
   }
 //+------------------------------------------------------------------+
-//| End of Exit SIGNAL                                               
+//| End of Exit SIGNAL ON TIMER                           
+//+------------------------------------------------------------------+
+//+------------------------------------------------------------------+
+//| Exit SIGNAL ON AI                                                |
+//+------------------------------------------------------------------+
+int ExitSignalOnAI(int CrossOccurred, int Magic, double CurrPrediction)
+  {
+// Type: Customisable 
+// Modify this function to suit your trading robot
+// CrossOccurred - identifies type of position 2 buy; 1 sell
+// CurrPrediction - current prediction from AI
+
+// This function checks for exit signals
+
+   int    ExitOutput=0;
+   double CurrOrderProfit; 
+   
+   if(CrossOccurred==1) //condition for sell orders
+     {
+      //checking the orders time before closing them
+      for(int i=0; i<OrdersTotal(); i++)
+        {
+         CurrOrderProfit = 0;
+         if(OrderSelect(i,SELECT_BY_POS,MODE_TRADES)==true &&
+                         OrderSymbol()==Symbol() &&
+                         OrderMagicNumber()==Magic && 
+                         OrderType()==OP_SELL) 
+                         //Calculating order current profit
+                         CurrOrderProfit = OrderProfit();
+         if(CurrOrderProfit >= 0 && CurrPrediction > 0)  ExitOutput=1;
+        }
+     
+     }
+
+   if(CrossOccurred==2) //condition for buy orders
+     {
+      //checking the orders time before closing them
+      for(int i=0; i<OrdersTotal(); i++)
+        {
+         CurrOrderProfit = 0;
+         if(OrderSelect(i,SELECT_BY_POS,MODE_TRADES)==true &&
+                         OrderSymbol()==Symbol() &&
+                         OrderMagicNumber()==Magic && 
+                         OrderType() == OP_BUY) 
+                         //Calculating order current profit
+                         CurrOrderProfit = OrderProfit();
+         if(CurrOrderProfit >= 0 && CurrPrediction < 0)  ExitOutput=2;
+        }
+     
+     }
+
+   return(ExitOutput);
+  }
+//+------------------------------------------------------------------+
+//| End of Exit SIGNAL ON AI                           
 //+------------------------------------------------------------------+
 //+------------------------------------------------------------------+
 //| Position Sizing Algo               
