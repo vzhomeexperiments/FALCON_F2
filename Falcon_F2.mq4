@@ -681,7 +681,7 @@ int ExitSignalOnAI(int CrossOccurred, int Magic, double CurrPrediction)
                          OrderType()==OP_SELL) 
                          //Calculating order current profit
                          CurrOrderProfit = NormalizeDouble(OrderProfit() + OrderSwap() + OrderCommission(),2);
-         if(CurrOrderProfit >= 0 && CurrPrediction > 0)  ExitOutput=1;
+         if(CurrOrderProfit > 0 && CurrPrediction > 0)  ExitOutput=1;
         }
      
      }
@@ -698,7 +698,7 @@ int ExitSignalOnAI(int CrossOccurred, int Magic, double CurrPrediction)
                          OrderType() == OP_BUY) 
                          //Calculating order current profit
                          CurrOrderProfit = NormalizeDouble(OrderProfit() + OrderSwap() + OrderCommission(),2);
-         if(CurrOrderProfit >= 0 && CurrPrediction < 0)  ExitOutput=2;
+         if(CurrOrderProfit > 0 && CurrPrediction < 0)  ExitOutput=2;
         }
      
      }
