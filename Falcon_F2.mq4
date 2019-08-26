@@ -418,12 +418,12 @@ int start()
 
    // TDL 2: Setting up Exit rules. Modify the ExitSignal() function to suit your needs.
 
-   if(CountPosOrders(MagicNumber,OP_BUY)>=1 && (ExitSignalOnAI(2, MagicNumber, AIPriceChangePredictionM15)==2 || isFridayActive == true))
+   if(CountPosOrders(MagicNumber,OP_BUY)>=1 && (ExitSignalOnAI(2, MagicNumber, AIPriceChangePredictionH1)==2 || isFridayActive == true))
      { // Close Long Positions
       CloseOrderPosition(OP_BUY, OnJournaling, MagicNumber, Slippage, P, RetryInterval); 
 
      }
-   if(CountPosOrders(MagicNumber,OP_SELL)>=1 && (ExitSignalOnAI(1, MagicNumber, AIPriceChangePredictionM15)==1 || isFridayActive == true))
+   if(CountPosOrders(MagicNumber,OP_SELL)>=1 && (ExitSignalOnAI(1, MagicNumber, AIPriceChangePredictionH1)==1 || isFridayActive == true))
      { // Close Short Positions
       CloseOrderPosition(OP_SELL, OnJournaling, MagicNumber, Slippage, P, RetryInterval);
      }
@@ -680,7 +680,7 @@ int ExitSignalOnAI(int CrossOccurred, int Magic, double CurrPrediction)
                          OrderMagicNumber()==Magic && 
                          OrderType()==OP_SELL) 
                          //Calculating order current profit
-                         CurrOrderProfit = OrderProfit();
+                         CurrOrderProfit = NormalizeDouble(OrderProfit() + OrderSwap() + OrderCommission(),2);
          if(CurrOrderProfit >= 0 && CurrPrediction > 0)  ExitOutput=1;
         }
      
@@ -697,7 +697,7 @@ int ExitSignalOnAI(int CrossOccurred, int Magic, double CurrPrediction)
                          OrderMagicNumber()==Magic && 
                          OrderType() == OP_BUY) 
                          //Calculating order current profit
-                         CurrOrderProfit = OrderProfit();
+                         CurrOrderProfit = NormalizeDouble(OrderProfit() + OrderSwap() + OrderCommission(),2);
          if(CurrOrderProfit >= 0 && CurrPrediction < 0)  ExitOutput=2;
         }
      
