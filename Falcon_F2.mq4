@@ -18,7 +18,7 @@
 #property copyright "Copyright 2019, Vladimir Zhbanko"
 #property link      "lucas@blackalgotechnologies.com"
 #property link      "https://vladdsm.github.io/myblog_attempt/"
-#property version   "1.005"  
+#property version   "1.006"  
 #property strict
 /* 
 
@@ -56,6 +56,10 @@ Add Market Type indication on the dashbouard
 Use only 2 models to entry
 Changed base parameters
 Modified exit rules
+# v 1.006
+Use exit condition as
+Either take profit or stop loss or,
+order time > timer and order value is positive
 */
 
 //+------------------------------------------------------------------+
@@ -71,7 +75,7 @@ extern bool    OnJournaling                     = false; // Add EA updates in th
 extern bool    EnableDashboard                  = True; // Turn on Dashboard
 
 extern string  Header2="----------Trading Rules Variables -----------";
-extern string  RobotBehavior                    = "daily"; //"scalper", "daily", "longterm" will affect order closure time
+extern string  RobotBehavior                    = "longterm"; //"scalper", "daily", "longterm" will affect order closure time
 extern bool    usePredictedSL                   = False;
 extern bool    usePredictedTP                   = False;
 extern int     TimeMaxHoldM1                    = 75; //max order close time in minutes
@@ -80,16 +84,16 @@ extern int     TimeMaxHoldM60                   = 4500; //max order close time i
 extern int     entryTriggerM1                   = 20;   //trade will start when predicted value will exceed this threshold
 extern int     entryTriggerM15                  = 50;   //trade will start when predicted value will exceed this threshold
 extern int     entryTriggerM60                  = 100;  //trade will start when predicted value will exceed this threshold
-extern double  stopLossFactorM1                 = 2;    //SL factor from 0.75 up to 2 multiplied by predicted TP
-extern double  stopLossFactorM15                = 0.8; //SL factor from 0.75 up to 2 multiplied by predicted TP
-extern double  stopLossFactorM60                = 0.8; //SL factor from 0.75 up to 2 multiplied by predicted TP
+extern double  stopLossFactorM1                 = 1;    //SL factor from 0.75 up to 2 multiplied by predicted TP
+extern double  stopLossFactorM15                = 1; //SL factor from 0.75 up to 2 multiplied by predicted TP
+extern double  stopLossFactorM60                = 1; //SL factor from 0.75 up to 2 multiplied by predicted TP
 extern double  takeProfFactorM1                 = 1;    //TP factor from 0.25 to 1 multiplied by predicted TP
 extern double  takeProfFactorM15                = 1;    //TP factor from 0.25 to 1 multiplied by predicted TP
 extern double  takeProfFactorM60                = 1;    //TP factor from 0.25 to 1 multiplied by predicted TP
 extern int     predictor_periodM1               = 1;    //predictor period in minutes
 extern int     predictor_periodM15              = 15;   //predictor period in minutes
 extern int     predictor_periodH1               = 60;   //predictor period in minutes
-extern bool    closeAllOnFridays                = True; //close all orders on Friday 1hr before market closure
+extern bool    closeAllOnFridays                = False; //close all orders on Friday 1hr before market closure
 extern bool    use_market_type                  = True; //use market type trading policy
 
 extern string  Header3="----------Position Sizing Settings-----------";
@@ -104,7 +108,7 @@ extern string  Header4="----------TP & SL Settings-----------";
 extern bool    UseFixedStopLoss                 = True; // If this is false and IsSizingOn = True, sizing algo will not be able to calculate correct lot size. 
 extern double  FixedStopLoss                    = 0; // Hard Stop in Pips. Will be overridden if vol-based SL is true 
 extern bool    IsVolatilityStopOn               = True;
-extern double  VolBasedSLMultiplier             = 4; // Stop Loss Amount in units of Volatility
+extern double  VolBasedSLMultiplier             = 6; // Stop Loss Amount in units of Volatility
 
 extern bool    UseFixedTakeProfit               = True;
 extern double  FixedTakeProfit                  = 0; // Hard Take Profit in Pips. Will be overridden if vol-based TP is true 
@@ -280,7 +284,7 @@ int start()
          
          //code that only executed once a bar
          OrderProfitToCSV(T_Num(MagicNumber));                        //write previous orders profit results for auto analysis in R
-         MyMarketType = ReadMarketFromCSV(Symbol(), 15);            //read analytical output from the Decision Support System
+         MyMarketType = ReadMarketFromCSV(Symbol(), 60);            //read analytical output from the Decision Support System
          //get the Reinforcement Learning policy for specific Market Type
          if(TerminalType == 0 && use_market_type == true)
            {
@@ -418,12 +422,12 @@ int start()
 
    // TDL 2: Setting up Exit rules. Modify the ExitSignal() function to suit your needs.
 
-   if(CountPosOrders(MagicNumber,OP_BUY)>=1 && (ExitSignalOnAI(2, MagicNumber, AIPriceChangePredictionH1)==2 || isFridayActive == true))
+   if(CountPosOrders(MagicNumber,OP_BUY)>=1 && (ExitSignalOnTimer(2, MagicNumber, TimeMaxHold)==2 || isFridayActive == true))
      { // Close Long Positions
       CloseOrderPosition(OP_BUY, OnJournaling, MagicNumber, Slippage, P, RetryInterval); 
 
      }
-   if(CountPosOrders(MagicNumber,OP_SELL)>=1 && (ExitSignalOnAI(1, MagicNumber, AIPriceChangePredictionH1)==1 || isFridayActive == true))
+   if(CountPosOrders(MagicNumber,OP_SELL)>=1 && (ExitSignalOnTimer(1, MagicNumber, TimeMaxHold)==1 || isFridayActive == true))
      { // Close Short Positions
       CloseOrderPosition(OP_SELL, OnJournaling, MagicNumber, Slippage, P, RetryInterval);
      }
@@ -613,7 +617,8 @@ int ExitSignalOnTimer(int CrossOccurred, int Magic, int MaxOrderCloseTimer)
 // This function checks for exit signals
 
    int   ExitOutput=0;
-   int   CurrOrderHoldTime; 
+   int   CurrOrderHoldTime;
+   double CurrOrderProfit;  
    
    if(CrossOccurred==1)
      {
@@ -627,7 +632,8 @@ int ExitSignalOnTimer(int CrossOccurred, int Magic, int MaxOrderCloseTimer)
                          OrderType()==OP_SELL) 
                          //Calculating order current time in minutes, used for closing orders
                          CurrOrderHoldTime = int((TimeCurrent() - OrderOpenTime())/60);
-         if(CurrOrderHoldTime >= MaxOrderCloseTimer )  ExitOutput=1;
+                         CurrOrderProfit = NormalizeDouble(OrderProfit() + OrderSwap() + OrderCommission(),2);
+         if(CurrOrderHoldTime >= MaxOrderCloseTimer && CurrOrderProfit > 0)  ExitOutput=1;
         }
      
      }
@@ -644,7 +650,8 @@ int ExitSignalOnTimer(int CrossOccurred, int Magic, int MaxOrderCloseTimer)
                          OrderType() == OP_BUY) 
                          //Calculating order current time in minutes, used for closing orders
                          CurrOrderHoldTime = int((TimeCurrent() - OrderOpenTime())/60);
-         if(CurrOrderHoldTime >= MaxOrderCloseTimer )  ExitOutput=2;
+                         CurrOrderProfit = NormalizeDouble(OrderProfit() + OrderSwap() + OrderCommission(),2);
+         if(CurrOrderHoldTime >= MaxOrderCloseTimer && CurrOrderProfit > 0 )  ExitOutput=2;
         }
      
      }
