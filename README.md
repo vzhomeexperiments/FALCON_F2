@@ -11,6 +11,7 @@ Repository is also containing several scripts to automate robot deployment acros
 ### Entry
 
 Entry is performed according to the predicted future results (see detailed logic in the code)
+Trigger for entry will be obtained from the test results obtained from the file StrTestxxx.csv
 
 ### Exits
 
@@ -18,6 +19,7 @@ Below described example for exit Buy position:
 
 * Order hit stop loss value
 * Order hit take profit value
+* Time. Time to hold in Hours will be derived from the strategy test results obtained from the file StrTestxxx.csv
 
 OR: 
 

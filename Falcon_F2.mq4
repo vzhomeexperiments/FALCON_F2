@@ -9,16 +9,15 @@
 #include <08_TerminalNumber.mqh>
 #include <096_ReadMarketTypeFromCSV.mqh>
 #include <10_isNewBar.mqh>
-#include <14_ReadPriceChangePredictionFromAI.mqh>
-#include <15_ReadPriceChangeTriggerFromAI.mqh>
+#include <12_ReadDataFromDSS.mqh>
 #include <16_LogMarketType.mqh>
 #include <17_CheckIfMarketTypePolicyIsOn.mqh>
 
 #property copyright "Copyright 2015, Black Algo Technologies Pte Ltd"
-#property copyright "Copyright 2019, Vladimir Zhbanko"
+#property copyright "Copyright 2020, Vladimir Zhbanko"
 #property link      "lucas@blackalgotechnologies.com"
 #property link      "https://vladdsm.github.io/myblog_attempt/"
-#property version   "1.006"  
+#property version   "1.007"  
 #property strict
 /* 
 
@@ -60,6 +59,8 @@ Modified exit rules
 Use exit condition as
 Either take profit or stop loss or,
 order time > timer and order value is positive
+# v 1.007
+Rewrite the code to use only one model prediction and Market Type pre-disposition
 */
 
 //+------------------------------------------------------------------+
@@ -75,26 +76,10 @@ extern bool    OnJournaling                     = false; // Add EA updates in th
 extern bool    EnableDashboard                  = True; // Turn on Dashboard
 
 extern string  Header2="----------Trading Rules Variables -----------";
-extern string  RobotBehavior                    = "longterm"; //"scalper", "daily", "longterm" will affect order closure time
-extern bool    usePredictedSL                   = False;
-extern bool    usePredictedTP                   = False;
-extern int     TimeMaxHoldM1                    = 75; //max order close time in minutes
-extern int     TimeMaxHoldM15                   = 1125; //max order close time in minutes
-extern int     TimeMaxHoldM60                   = 4500; //max order close time in minutes
-extern int     entryTriggerM1                   = 20;   //trade will start when predicted value will exceed this threshold
-extern int     entryTriggerM15                  = 50;   //trade will start when predicted value will exceed this threshold
 extern int     entryTriggerM60                  = 100;  //trade will start when predicted value will exceed this threshold
-extern double  stopLossFactorM1                 = 1;    //SL factor from 0.75 up to 2 multiplied by predicted TP
-extern double  stopLossFactorM15                = 1; //SL factor from 0.75 up to 2 multiplied by predicted TP
-extern double  stopLossFactorM60                = 1; //SL factor from 0.75 up to 2 multiplied by predicted TP
-extern double  takeProfFactorM1                 = 1;    //TP factor from 0.25 to 1 multiplied by predicted TP
-extern double  takeProfFactorM15                = 1;    //TP factor from 0.25 to 1 multiplied by predicted TP
-extern double  takeProfFactorM60                = 1;    //TP factor from 0.25 to 1 multiplied by predicted TP
-extern int     predictor_periodM1               = 1;    //predictor period in minutes
-extern int     predictor_periodM15              = 15;   //predictor period in minutes
 extern int     predictor_periodH1               = 60;   //predictor period in minutes
 extern bool    closeAllOnFridays                = False; //close all orders on Friday 1hr before market closure
-extern bool    use_market_type                  = True; //use market type trading policy
+extern bool    use_market_type                  = False; //use market type trading policy
 
 extern string  Header3="----------Position Sizing Settings-----------";
 extern string  Lot_explanation                  = "If IsSizingOn = true, Lots variable will be ignored";
@@ -202,8 +187,8 @@ datetime ReferenceTime;       //used for order history
 int     MyMarketType;         //used to recieve market status from AI
 //used to recieve prediction from AI 
 int TimeMaxHold;       
-double    AIPriceChangePredictionM1, AIPriceChangePredictionM15, AIPriceChangePredictionH1;
-double    AIPriceTriggerPredictionM1, AIPriceTriggerPredictionM15, AIPriceTriggerPredictionH1;
+double    AIPriceChange, AItrigger, AItimehold, AImaxperf;
+
 bool isFridayActive = false;
 
 //+------------------------------------------------------------------+
@@ -295,40 +280,34 @@ int start()
                }
          
          
-         //predicted using M1 Timeframe
-         AIPriceChangePredictionM1 = ReadPriceChangePredictionFromAI(Symbol(),predictor_periodM1); //price change prediction
-         
-         //predicted using M15 Timeframe
-         AIPriceChangePredictionM15 = ReadPriceChangePredictionFromAI(Symbol(),predictor_periodM15); //price change prediction
-           //derived trigger level
-           AIPriceTriggerPredictionM15 = ReadPriceChangeTriggerFromAI(predictor_periodM15);
-           if(AIPriceTriggerPredictionM15 > 10) entryTriggerM15 = (int)AIPriceTriggerPredictionM15;
-             
-         //predicted using H1 Timeframe
-         AIPriceChangePredictionH1 = ReadPriceChangePredictionFromAI(Symbol(),predictor_periodH1); //price change prediction
-            //derived trigger level
-           AIPriceTriggerPredictionH1 = ReadPriceChangeTriggerFromAI(predictor_periodH1);
-           if(AIPriceTriggerPredictionH1 > 10) entryTriggerM60 = (int)AIPriceTriggerPredictionH1;
+         //predicted price change on H1 Timeframe
+         AIPriceChange = ReadDataFromDSS(Symbol(),predictor_periodH1, "read_change");
+         //derived trigger level
+         AItrigger = ReadDataFromDSS(Symbol(),predictor_periodH1, "read_trigger");
+         if(AItrigger > 10) entryTriggerM60 = (int)AItrigger;
+         //derived time to hold the order
+         AItimehold = ReadDataFromDSS(Symbol(),predictor_periodH1, "read_timehold");
+         //derived model performance
+         AImaxperf = ReadDataFromDSS(Symbol(),predictor_periodH1, "read_maxperf");  
          
          //do not trade when something is wrong...
-         if(AIPriceChangePredictionM1 == -1 || AIPriceTriggerPredictionM15 == -1 || AIPriceTriggerPredictionH1 == -1)
+         if(AIPriceChange == -1 || AItrigger == -1 || AItimehold == -1 || AImaxperf == -1)
            {
              FlagBuy = False;
              FlagSell= False;
            }
       
-         FlagBuy   = GetTradeFlagCondition(AIPriceChangePredictionM1,AIPriceChangePredictionM15,AIPriceChangePredictionH1, //predicted change from DSS
-                                           entryTriggerM1, entryTriggerM15, entryTriggerM60,//absolute value to enter trade
-                                           RobotBehavior,      //desired robot behaviour "scalper", "daily", "longterm"
+         FlagBuy   = GetTradeFlagCondition(AIPriceChange, //predicted change from DSS
+                                           AItrigger, //absolute value to enter trade
+                                           AImaxperf,
                                            "buy"); //which direction to check "buy" "sell"
              
-         FlagSell = GetTradeFlagCondition(AIPriceChangePredictionM1,AIPriceChangePredictionM15,AIPriceChangePredictionH1, //predicted change from DSS
-                                          entryTriggerM1, entryTriggerM15, entryTriggerM60,//absolute value to enter trade
-                                          RobotBehavior,      //desired robot behaviour "scalper", "daily", "longterm"
+         FlagSell = GetTradeFlagCondition(AIPriceChange, //predicted change from DSS
+                                          AItrigger, //absolute value to enter trade
+                                          AImaxperf,
                                           "sell"); //which direction to check "buy" "sell"
                            
-         TimeMaxHold = GetTimeMaxHold(TimeMaxHoldM1, TimeMaxHoldM15, TimeMaxHoldM60,    //time to hold order from the parameters
-                                      RobotBehavior);
+         TimeMaxHold = int(AItimehold * 60); //time to max hold the order in minutes
          
          //TradeAllowed is checking Macroeconomic events (derived from Decision Support System)          
          TradeAllowed = ReadCommandFromCSV(MagicNumber);              //read command from R to make sure trading is allowed
@@ -376,20 +355,17 @@ int start()
 
    myATR=iATR(NULL,Period(),atr_period,1);
 
-   if(UseFixedStopLoss==False || usePredictedSL == True) 
+   if(UseFixedStopLoss==False) 
      {
-      Stop=GetTradePrediction(stopLossFactorM1, stopLossFactorM15,stopLossFactorM60,    //stoploss or take profit factor
-                              AIPriceChangePredictionM1, AIPriceChangePredictionM15, AIPriceChangePredictionH1,
-                              RobotBehavior);
+      Stop=0;
         }  else {
       Stop=VolBasedStopLoss(IsVolatilityStopOn,FixedStopLoss,myATR,VolBasedSLMultiplier,P);
      }
 
-   if(UseFixedTakeProfit==False || usePredictedTP == True) 
+   if(UseFixedTakeProfit==False) 
      {
-      Take=GetTradePrediction(takeProfFactorM1, takeProfFactorM15,takeProfFactorM60,    //stoploss or take profit factor
-                              AIPriceChangePredictionM1, AIPriceChangePredictionM15, AIPriceChangePredictionH1,
-                              RobotBehavior);
+      Take=0;
+        
         }  else {
       Take=VolBasedTakeProfit(IsVolatilityTakeProfitOn,FixedTakeProfit,myATR,VolBasedTPMultiplier,P);
      }
@@ -488,14 +464,14 @@ int start()
 
 //----
     //adding dashboard
-    if(EnableDashboard==True) ShowDashboard("Magic Number", MagicNumber,
-                                            "Market Type", MyMarketType,
-                                            "Direction M1", 1,
-                                            "Change    M1", AIPriceChangePredictionM1,
-                                            "Direction M15", 1,
-                                            "Change    M15", AIPriceChangePredictionM15,
-                                            "Direction H1", 1,
-                                            "Change    H1", AIPriceChangePredictionH1); 
+    if(EnableDashboard==True) ShowDashboard("Magic Number ", MagicNumber,
+                                            "Market Type ", MyMarketType,
+                                            "AIPriceChange ", int(AIPriceChange),
+                                            "AItrigger ", AItrigger,
+                                            "AItimehold ", int(AItimehold),
+                                            "AImaxperf ", AImaxperf,
+                                            "Nothing ", 1,
+                                            "Nothing ", 1); 
 
    return(0);
   }
@@ -2481,77 +2457,33 @@ string GetErrorDescription(int error)
 //+------------------------------------------------------------------+
 //| GetTradeFlagCondition                                              
 //+------------------------------------------------------------------+
-bool GetTradeFlagCondition(double ExpectedMoveM1,double ExpectedMoveM15,double ExpectedMoveM60, //predicted change from DSS
-                           int EntryTradeTriggerM1, int EntryTradeTriggerM15, int EntryTradeTriggerM60,//absolute value to enter trade
-                           string RobotType,      //desired robot behaviour "scalper", "daily", "longterm"
+bool GetTradeFlagCondition(double ExpectedMoveM60, //predicted change from DSS
+                           double EntryTradeTriggerM60,//absolute value to enter trade
+                           double ModelQualityM60, //achieved model quality
                            string DirectionCheck) //which direction to check "buy" "sell"
   {
-// Type: Customizeable
-// Do not edit unless you know what you're doing 
-
 // This function checks trade flag based on hard coded logic and return either false or true
-// let the trader decide which strategy to use (short/medium/long) and automatically changes trading behaviour 
 
    bool result=False;
    
-   if(RobotType == "scalper")        //logic tested by manually setting up the predictors in the files and disabling predictors tasks in Windows Task Scheduler: 
+   if(DirectionCheck == "buy")       //logic tested by manually setting up the predictors in the files and disabling predictors tasks in Windows Task Scheduler: 
                                      //buy : USDCHF M1 ->   25; USDCHF M15 ->  25; USDCHF M60 ->  25
                                      //sell: USDCHF M1 ->  -25; USDCHF M15 -> -25; USDCHF M60 -> -25
-     {
-                        //Specifying Buy Conditions
-                        if(DirectionCheck == "buy")
-                          {
-                            if(ExpectedMoveM1 > EntryTradeTriggerM1 && ExpectedMoveM15 > EntryTradeTriggerM1 && ExpectedMoveM60 > EntryTradeTriggerM1) result = True;
-                                                        
-                          } else if(DirectionCheck == "sell")//Specifying Buy Conditions
-                                   {
-                                     if(ExpectedMoveM1 < (-1*EntryTradeTriggerM1) && ExpectedMoveM15 < (-1* EntryTradeTriggerM1) && ExpectedMoveM60 < (-1* EntryTradeTriggerM1)) result = True;
-                                   }
+     { if(ExpectedMoveM60 > EntryTradeTriggerM60 && ModelQualityM60 > 0.5) result = True;     } 
+    else if(DirectionCheck == "sell"){    //logic tested by manually setting up the predictors in the files and disabling predictors tasks in Windows Task Scheduler: 
+                                         //buy : USDCHF M1 ->   5; USDCHF M15 ->  55; USDCHF M60 ->  55
+                                         //sell: USDCHF M1 ->  -5; USDCHF M15 -> -55; USDCHF M60 -> -
+       if(ExpectedMoveM60 < (-1*EntryTradeTriggerM60) && ModelQualityM60 > 0.5) result = True;}
       
-     } 
-    else if(RobotType == "daily")    //logic tested by manually setting up the predictors in the files and disabling predictors tasks in Windows Task Scheduler: 
-                                     //buy : USDCHF M1 ->   5; USDCHF M15 ->  55; USDCHF M60 ->  55
-                                     //sell: USDCHF M1 ->  -5; USDCHF M15 -> -55; USDCHF M60 -> -55
-              {
-      
-                        //Specifying Buy Conditions
-                           if(DirectionCheck == "buy")
-                             {
-                               if(ExpectedMoveM15 > EntryTradeTriggerM15 && ExpectedMoveM60 > EntryTradeTriggerM15) result = True;
-                             } else if(DirectionCheck == "sell")//Specifying Buy Conditions
-                                      {
-                                       if(ExpectedMoveM15 < (-1*EntryTradeTriggerM15) && ExpectedMoveM60 < (-1* EntryTradeTriggerM15)) result = True;
-                                      }
-               
-              }
-    else if(RobotType == "longterm") //logic tested by manually setting up the predictors in the files and disabling predictors tasks in Windows Task Scheduler: 
-                                     //buy : USDCHF M15 ->  55; USDCHF M60 ->  180
-                                     //sell: USDCHF M15 -> -55; USDCHF M60 -> -180
-                       {
-                        //Specifying Buy Conditions
-                           if(DirectionCheck == "buy")
-                             {
-                               if(ExpectedMoveM15 > EntryTradeTriggerM15 && ExpectedMoveM60 > EntryTradeTriggerM60) result = True;
-                             } else if(DirectionCheck == "sell")//Specifying Buy Conditions
-                                      {
-                                       if(ExpectedMoveM15 < (-1*EntryTradeTriggerM15) && ExpectedMoveM60 < (-1* EntryTradeTriggerM60)) result = True;
-                                      }                           
-      
-                        
-                       }
-   
- 
+    else result = false;
+                                      
 
    return(result);
 
-/* Motivation: 
-   
-   Scalper:  Only important that Expected move predicted on ALL timeframes is more than the trigger for M1 period
-   Daily:    Check that short term predicted > 0, check against daily trigger for M15, check that long term prediction as at least greater than those for M15
-   Longterm: Check only Medium and Long term trigger matches, completely ignore short term
-   
+/* description: 
+   Function will use provided information to decide whether to flag buy or sell condition as true or false
+   DSS will also provide an output to the strategy test, this value is used as a filter to use this pair for trading
  
-
 */
   }
 //+------------------------------------------------------------------+
@@ -2560,9 +2492,8 @@ bool GetTradeFlagCondition(double ExpectedMoveM1,double ExpectedMoveM15,double E
 //+------------------------------------------------------------------+
 //| GetTradePrediction                                              
 //+------------------------------------------------------------------+
-double GetTradePrediction(double stopFactorm1, double stopFactorm15,double stopFactorm60,    //stoploss or take profit factor
-                          double AIPriceChangem1, double AIPriceChangem15, double AIPriceChangem60,//predicted value of market from the DSS
-                          string RobotType)      //desired robot behaviour "scalper", "daily", "longterm"
+double GetTradePrediction(double stopFactorm60,    //stoploss or take profit factor
+                          double AIPriceChangem60)
   {
 // Type: Customizeable
 // Do not edit unless you know what you're doing 
@@ -2572,9 +2503,7 @@ double GetTradePrediction(double stopFactorm1, double stopFactorm15,double stopF
 
    double result=0;
    
-   if(RobotType == "scalper") result = stopFactorm1*MathAbs(AIPriceChangem1);                 
-   if(RobotType == "daily")   result = stopFactorm15*MathAbs(AIPriceChangem15);  
-   if(RobotType == "longterm")result = stopFactorm60*MathAbs(AIPriceChangem60);  
+   result = stopFactorm60*MathAbs(AIPriceChangem60);  
 
    return(result);
 
@@ -2585,33 +2514,6 @@ double GetTradePrediction(double stopFactorm1, double stopFactorm15,double stopF
 //+------------------------------------------------------------------+
 //| End of GetTradePrediction                                                
 //+------------------------------------------------------------------+    
-//+------------------------------------------------------------------+
-//| GetTimeMaxHold                                              
-//+------------------------------------------------------------------+
-int GetTimeMaxHold(int timeHoldm1, int timeHoldm15, int timeHoldm60,    //time to hold order from the parameters
-                   string RobotType)      //desired robot behaviour "scalper", "daily", "longterm"
-  {
-// Type: Customizeable
-// Do not edit unless you know what you're doing 
-
-// This function checks robot type and return desired time to hold the order
-// let the trader decide which strategy to use (short/medium/long) and automatically changes trading behaviour 
-
-   int result=100;
-   
-   if(RobotType == "scalper") result = timeHoldm1;                 
-   if(RobotType == "daily")   result = timeHoldm15;  
-   if(RobotType == "longterm")result = timeHoldm60;  
-
-   return(result);
-
-/* Definitions: 
- 
-*/
-  }
-//+------------------------------------------------------------------+
-//| End of GetTimeMaxHold                                                
-//+------------------------------------------------------------------+
 //+------------------------------------------------------------------+
 //| Dashboard - Comment Version                                    
 //+------------------------------------------------------------------+
