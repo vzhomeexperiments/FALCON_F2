@@ -80,6 +80,7 @@ extern int     entryTriggerM60                  = 100;  //trade will start when 
 extern int     predictor_periodH1               = 60;   //predictor period in minutes
 extern bool    closeAllOnFridays                = False; //close all orders on Friday 1hr before market closure
 extern bool    use_market_type                  = False; //use market type trading policy
+extern bool    UseOrderTimeList                 = False; //option to track order closure time using a ticket number
 
 extern string  Header3="----------Position Sizing Settings-----------";
 extern string  Lot_explanation                  = "If IsSizingOn = true, Lots variable will be ignored";
@@ -174,10 +175,13 @@ int CrossTriggered1, CrossTriggered2, CrossTriggered3;
 int OrderNumber;
 double HiddenSLList[][2]; // First dimension is for position ticket numbers, second is for the SL Levels
 double HiddenTPList[][2]; // First dimension is for position ticket numbers, second is for the TP Levels
-double HiddenBEList[]; // First dimension is for position ticket numbers
+double HiddenBEList[];    // First dimension is for position ticket numbers
 double HiddenTrailingList[][2]; // First dimension is for position ticket numbers, second is for the hidden trailing stop levels
 double VolTrailingList[][2]; // First dimension is for position ticket numbers, second is for recording of volatility amount (one unit of ATR) at the time of trade
 double HiddenVolTrailingList[][3]; // First dimension is for position ticket numbers, second is for the hidden trailing stop levels, third is for recording of volatility amount (one unit of ATR) at the time of trade
+
+// each order should be tracking it's own timer option UseOrderTimeList
+double TimeHoldList[][2]; // First dimension is for position ticket numbers, second is for the Hold time list
 
 string  InternalHeader3="----------Decision Support Variables-----------";
 bool     TradeAllowed = true; 
@@ -236,6 +240,8 @@ int init()
    if(UseHiddenTrailingStops) ArrayResize(HiddenTrailingList,MaxPositionsAllowed,0);
    if(UseVolTrailingStops) ArrayResize(VolTrailingList,MaxPositionsAllowed,0);
    if(UseHiddenVolTrailing) ArrayResize(HiddenVolTrailingList,MaxPositionsAllowed,0);
+   if(UseOrderTimeList) ArrayResize(TimeHoldList,MaxPositionsAllowed,0);
+   
 
    start();
    return(0);
@@ -401,12 +407,13 @@ int start()
 
    // TDL 2: Setting up Exit rules. Modify the ExitSignal() function to suit your needs.
 
-   if(CountPosOrders(MagicNumber,OP_BUY)>=1 && (ExitSignalOnTimer(2, MagicNumber, TimeMaxHold)==2 || isFridayActive == true))
+                                                //We need to change this function to use Tickets in arrays
+   if(CountPosOrders(MagicNumber,OP_BUY)>=1 && (ExitSignalOnTimerMagic(2, MagicNumber, TimeMaxHold)==2 || isFridayActive == true))
      { // Close Long Positions
       CloseOrderPosition(OP_BUY, OnJournaling, MagicNumber, Slippage, P, RetryInterval); 
 
-     }
-   if(CountPosOrders(MagicNumber,OP_SELL)>=1 && (ExitSignalOnTimer(1, MagicNumber, TimeMaxHold)==1 || isFridayActive == true))
+     }                                          //We need to change this function to use Tickets in arrays
+   if(CountPosOrders(MagicNumber,OP_SELL)>=1 && (ExitSignalOnTimerMagic(1, MagicNumber, TimeMaxHold)==1 || isFridayActive == true))
      { // Close Short Positions
       CloseOrderPosition(OP_SELL, OnJournaling, MagicNumber, Slippage, P, RetryInterval);
      }
@@ -491,8 +498,9 @@ int start()
 Content:
 1) EntrySignal
 2.1) ExitSignal
-2.2) ExitSignalOnTimer
-2.3) ExitSignalOnAI
+2.2) ExitSignalOnTimerMagic
+2.3) ExitSignalOnTimerTicket
+2.4) ExitSignalOnAI
 3) GetLot
 4) CheckLot
 5) CountPosOrders
@@ -586,14 +594,14 @@ int ExitSignal(int CrossOccurred)
 //| End of Exit SIGNAL                                               
 //+------------------------------------------------------------------+
 //+------------------------------------------------------------------+
-//| Exit SIGNAL ON TIMER                                             |
+//| Exit SIGNAL ON TIMER MAGIC                                            |
 //+------------------------------------------------------------------+
-int ExitSignalOnTimer(int CrossOccurred, int Magic, int MaxOrderCloseTimer)
+int ExitSignalOnTimerMagic(int CrossOccurred, int Magic, int MaxOrderCloseTimer)
   {
 // Type: Customisable 
 // Modify this function to suit your trading robot
 
-// This function checks for exit signals
+// This function checks for exit signals using a magic number
 
    int   ExitOutput=0;
    int   CurrOrderHoldTime;
@@ -612,7 +620,8 @@ int ExitSignalOnTimer(int CrossOccurred, int Magic, int MaxOrderCloseTimer)
                          //Calculating order current time in minutes, used for closing orders
                          CurrOrderHoldTime = int((TimeCurrent() - OrderOpenTime())/60);
                          CurrOrderProfit = NormalizeDouble(OrderProfit() + OrderSwap() + OrderCommission(),2);
-         if(CurrOrderHoldTime >= MaxOrderCloseTimer && CurrOrderProfit > 0)  ExitOutput=1;
+         //if(CurrOrderHoldTime >= MaxOrderCloseTimer && CurrOrderProfit > 0)  ExitOutput=1;
+         if(CurrOrderHoldTime >= MaxOrderCloseTimer)  ExitOutput=1;
         }
      
      }
@@ -631,6 +640,7 @@ int ExitSignalOnTimer(int CrossOccurred, int Magic, int MaxOrderCloseTimer)
                          CurrOrderHoldTime = int((TimeCurrent() - OrderOpenTime())/60);
                          CurrOrderProfit = NormalizeDouble(OrderProfit() + OrderSwap() + OrderCommission(),2);
          if(CurrOrderHoldTime >= MaxOrderCloseTimer && CurrOrderProfit > 0 )  ExitOutput=2;
+         if(CurrOrderHoldTime >= MaxOrderCloseTimer)  ExitOutput=2;
         }
      
      }
@@ -693,6 +703,63 @@ int ExitSignalOnAI(int CrossOccurred, int Magic, double CurrPrediction)
   }
 //+------------------------------------------------------------------+
 //| End of Exit SIGNAL ON AI                           
+//+------------------------------------------------------------------+
+//+------------------------------------------------------------------+
+//| Exit SIGNAL ON TIMER TICKET                                            |
+//+------------------------------------------------------------------+
+int ExitSignalOnTimerTicket(int CrossOccurred, int Magic, int MaxOrderCloseTimer)
+  {
+// Type: Customisable 
+// Modify this function to suit your trading robot
+
+// This function checks for exit signals using a magic number
+
+   int   ExitOutput=0;
+   int   CurrOrderHoldTime;
+   double CurrOrderProfit;  
+   
+   if(CrossOccurred==1)
+     {
+      //checking the orders time before closing them
+      for(int i=0; i<OrdersTotal(); i++)
+        {
+         CurrOrderHoldTime = 0;
+         if(OrderSelect(i,SELECT_BY_POS,MODE_TRADES)==true &&
+                         OrderSymbol()==Symbol() &&
+                         OrderMagicNumber()==Magic && 
+                         OrderType()==OP_SELL) 
+                         //Calculating order current time in minutes, used for closing orders
+                         CurrOrderHoldTime = int((TimeCurrent() - OrderOpenTime())/60);
+                         CurrOrderProfit = NormalizeDouble(OrderProfit() + OrderSwap() + OrderCommission(),2);
+         //if(CurrOrderHoldTime >= MaxOrderCloseTimer && CurrOrderProfit > 0)  ExitOutput=1;
+         if(CurrOrderHoldTime >= MaxOrderCloseTimer)  ExitOutput=1;
+        }
+     
+     }
+
+   if(CrossOccurred==2)
+     {
+      //checking the orders time before closing them
+      for(int i=0; i<OrdersTotal(); i++)
+        {
+         CurrOrderHoldTime = 0;
+         if(OrderSelect(i,SELECT_BY_POS,MODE_TRADES)==true &&
+                         OrderSymbol()==Symbol() &&
+                         OrderMagicNumber()==Magic && 
+                         OrderType() == OP_BUY) 
+                         //Calculating order current time in minutes, used for closing orders
+                         CurrOrderHoldTime = int((TimeCurrent() - OrderOpenTime())/60);
+                         CurrOrderProfit = NormalizeDouble(OrderProfit() + OrderSwap() + OrderCommission(),2);
+         if(CurrOrderHoldTime >= MaxOrderCloseTimer && CurrOrderProfit > 0 )  ExitOutput=2;
+         if(CurrOrderHoldTime >= MaxOrderCloseTimer)  ExitOutput=2;
+        }
+     
+     }
+
+   return(ExitOutput);
+  }
+//+------------------------------------------------------------------+
+//| End of Exit SIGNAL ON TIMER TICKET                          
 //+------------------------------------------------------------------+
 //+------------------------------------------------------------------+
 //| Position Sizing Algo               
