@@ -60,7 +60,9 @@ Use exit condition as
 Either take profit or stop loss or,
 order time > timer and order value is positive
 # v 1.007
-Rewrite the code to use only one model prediction and Market Type pre-disposition
+Rewrite the code to use predictions from DSS (reading files)
+Add arrays to log DSS information at the moment of order opening
+Rewrite order closure logic to  proper time to close order
 */
 
 //+------------------------------------------------------------------+
@@ -80,14 +82,14 @@ extern int     entryTriggerM60                  = 100;  //trade will start when 
 extern int     predictor_periodH1               = 60;   //predictor period in minutes
 extern bool    closeAllOnFridays                = False; //close all orders on Friday 1hr before market closure
 extern bool    use_market_type                  = False; //use market type trading policy
-extern bool    UseOrderTimeList                 = False; //option to track order closure time using a ticket number
+extern bool    UseDSSInfoList                   = False; //option to track DSS info using a ticket number
 
 extern string  Header3="----------Position Sizing Settings-----------";
 extern string  Lot_explanation                  = "If IsSizingOn = true, Lots variable will be ignored";
 extern double  Lots                             = 0.01;
 extern bool    IsSizingOn                       = False;
 extern double  Risk                             = 1; // Risk per trade (in percentage)
-extern int     MaxPositionsAllowed              = 1;
+extern int     MaxPositionsAllowed              = 10;
 
 extern string  Header4="----------TP & SL Settings-----------";
 
@@ -180,8 +182,11 @@ double HiddenTrailingList[][2]; // First dimension is for position ticket number
 double VolTrailingList[][2]; // First dimension is for position ticket numbers, second is for recording of volatility amount (one unit of ATR) at the time of trade
 double HiddenVolTrailingList[][3]; // First dimension is for position ticket numbers, second is for the hidden trailing stop levels, third is for recording of volatility amount (one unit of ATR) at the time of trade
 
-// each order should be tracking it's own timer option UseOrderTimeList
-double TimeHoldList[][2]; // First dimension is for position ticket numbers, second is for the Hold time list
+// each order ticket should be tracking it's own info
+int DSSInfoList[][3]; // First dimension is for position ticket numbers, second is for the Hold time list, third is for the Market Type
+                      // Array will be used in the following functions: 
+                      // UpdateDSSInfoList - function to update status of array to clean elements if needed
+                      // SetDSSInfoList - record needed data at the moment of order opening
 
 string  InternalHeader3="----------Decision Support Variables-----------";
 bool     TradeAllowed = true; 
@@ -240,7 +245,7 @@ int init()
    if(UseHiddenTrailingStops) ArrayResize(HiddenTrailingList,MaxPositionsAllowed,0);
    if(UseVolTrailingStops) ArrayResize(VolTrailingList,MaxPositionsAllowed,0);
    if(UseHiddenVolTrailing) ArrayResize(HiddenVolTrailingList,MaxPositionsAllowed,0);
-   if(UseOrderTimeList) ArrayResize(TimeHoldList,MaxPositionsAllowed,0);
+   if(UseDSSInfoList) ArrayResize(DSSInfoList,MaxPositionsAllowed,0);
    
 
    start();
@@ -351,13 +356,10 @@ int start()
      }
     /* Using timer to close trades
     
-    //1. Predicted to Buy --> close the sell trade but wait until the order minimum holding time is expired
-         //idea is also to avoid closing trades by timer in case the favorable direction is continue to be predicted
-         if(FlagBuy == True) CrossTriggered2=1;   //--> this will close sell trade when time of the holding order is expired
+    //1. Predicted to Buy --> wait until the time to keep the order is elapsed
    
-    //2. Predicted to Sell --> close the buy trade
+    //2. Predicted to Sell --> wait until the time to keep the order is elapsed
 
-         if(FlagSell== True) CrossTriggered2=2; //--> this will close buy trade when time of the holding order is expired
     */  
 
 //----------TP, SL, Breakeven and Trailing Stops Variables-----------
@@ -403,19 +405,25 @@ int start()
       TriggerAndReviewHiddenVolTrailing(OnJournaling,VolTrailingDistMultiplier_Hidden,VolTrailingBuffMultiplier_Hidden,Slippage,RetryInterval,MagicNumber,P);
    }
 
+//----------DSS Info Array management -----------
+if(UseDSSInfoList) {
+      UpdateDSSInfoList(OnJournaling,RetryInterval,MagicNumber);
+      //ReviewDSSInfoList(OnJournaling,AItimehold,MyMarketType,RetryInterval,MagicNumber);
+   }
+
 //----------Exit Rules (All Opened Positions)-----------
 
    // TDL 2: Setting up Exit rules. Modify the ExitSignal() function to suit your needs.
 
                                                 //We need to change this function to use Tickets in arrays
-   if(CountPosOrders(MagicNumber,OP_BUY)>=1 && (ExitSignalOnTimerMagic(2, MagicNumber, TimeMaxHold)==2 || isFridayActive == true))
+   if(CountPosOrders(MagicNumber,OP_BUY)>=1 && (ExitSignalOnTimerTicket(2, MagicNumber, DSSInfoList)==2 || isFridayActive == true))
      { // Close Long Positions
-      CloseOrderPosition(OP_BUY, OnJournaling, MagicNumber, Slippage, P, RetryInterval); 
+      CloseOrderPositionTimer(OP_BUY, OnJournaling, MagicNumber, DSSInfoList, Slippage, P, RetryInterval); 
 
      }                                          //We need to change this function to use Tickets in arrays
-   if(CountPosOrders(MagicNumber,OP_SELL)>=1 && (ExitSignalOnTimerMagic(1, MagicNumber, TimeMaxHold)==1 || isFridayActive == true))
+   if(CountPosOrders(MagicNumber,OP_SELL)>=1 && (ExitSignalOnTimerTicket(1, MagicNumber, DSSInfoList)==1 || isFridayActive == true))
      { // Close Short Positions
-      CloseOrderPosition(OP_SELL, OnJournaling, MagicNumber, Slippage, P, RetryInterval);
+      CloseOrderPositionTimer(OP_SELL, OnJournaling, MagicNumber, DSSInfoList, Slippage, P, RetryInterval);
      }
 
 //----------Entry Rules (Market and Pending) -----------
@@ -430,6 +438,9 @@ int start()
    
                // Log current MarketType to the file in the sandbox
                LogMarketType(MagicNumber, OrderNumber, MyMarketType);
+               
+               // Log current Market Type and Time to Hold order in the arrays
+               if(UseDSSInfoList) SetDSSInfoList(OnJournaling,TimeMaxHold,MyMarketType, OrderNumber, MagicNumber);
    
                // Set Stop Loss value for Hidden SL
                if(UseHiddenStopLoss) SetStopLossHidden(OnJournaling,IsVolatilityStopLossOn_Hidden,FixedStopLoss_Hidden,myATR,VolBasedSLMultiplier_Hidden,P,OrderNumber);
@@ -451,6 +462,9 @@ int start()
    
                // Log current MarketType to the file in the sandbox
                LogMarketType(MagicNumber, OrderNumber, MyMarketType);
+               
+               // Log current Market Type and Time to Hold order in the arrays
+               if(UseDSSInfoList) SetDSSInfoList(OnJournaling,TimeMaxHold,MyMarketType, OrderNumber, MagicNumber);
    
                // Set Stop Loss value for Hidden SL
                if(UseHiddenStopLoss) SetStopLossHidden(OnJournaling,IsVolatilityStopLossOn_Hidden,FixedStopLoss_Hidden,myATR,VolBasedSLMultiplier_Hidden,P,OrderNumber);
@@ -707,52 +721,58 @@ int ExitSignalOnAI(int CrossOccurred, int Magic, double CurrPrediction)
 //+------------------------------------------------------------------+
 //| Exit SIGNAL ON TIMER TICKET                                            |
 //+------------------------------------------------------------------+
-int ExitSignalOnTimerTicket(int CrossOccurred, int Magic, int MaxOrderCloseTimer)
+int ExitSignalOnTimerTicket(int CrossOccurred, int Magic, int & infoArray [][])
   {
 // Type: Customisable 
 // Modify this function to suit your trading robot
 
-// This function checks for exit signals using a magic number
+// This function checks for exit signals for each open order separately using the ticket
+// If this will output 2 then one or more BUY orders shall be closed
+//                     1 then one or more SELL orders shall be closed
 
    int   ExitOutput=0;
    int   CurrOrderHoldTime;
    double CurrOrderProfit;  
    
-   if(CrossOccurred==1)
+   if(CrossOccurred==1) //checking sell orders only
      {
-      //checking the orders time before closing them
-      for(int i=0; i<OrdersTotal(); i++)
-        {
+         //check the order time using ticket from array
          CurrOrderHoldTime = 0;
-         if(OrderSelect(i,SELECT_BY_POS,MODE_TRADES)==true &&
+         for(int j=0;j<ArraySize(infoArray);j++)
+           {
+            if(infoArray[j][0] != 0 &&
+                         OrderSelect(infoArray[j][0],SELECT_BY_TICKET,MODE_TRADES)==true &&
                          OrderSymbol()==Symbol() &&
                          OrderMagicNumber()==Magic && 
                          OrderType()==OP_SELL) 
                          //Calculating order current time in minutes, used for closing orders
                          CurrOrderHoldTime = int((TimeCurrent() - OrderOpenTime())/60);
                          CurrOrderProfit = NormalizeDouble(OrderProfit() + OrderSwap() + OrderCommission(),2);
-         //if(CurrOrderHoldTime >= MaxOrderCloseTimer && CurrOrderProfit > 0)  ExitOutput=1;
-         if(CurrOrderHoldTime >= MaxOrderCloseTimer)  ExitOutput=1;
-        }
+            //if(CurrOrderHoldTime >= infoArray[j][1] && CurrOrderProfit > 0)  ExitOutput=1;
+            if(CurrOrderHoldTime >= infoArray[j][1])  ExitOutput=1; break;
+           }
+
+        
      
      }
 
-   if(CrossOccurred==2)
+   if(CrossOccurred==2) //checking buy orders only
      {
-      //checking the orders time before closing them
-      for(int i=0; i<OrdersTotal(); i++)
-        {
+         //checking the orders time using ticket from array
          CurrOrderHoldTime = 0;
-         if(OrderSelect(i,SELECT_BY_POS,MODE_TRADES)==true &&
+         for(int j=0;j<ArraySize(infoArray);j++)
+           {
+            if(infoArray[j][0] != 0 &&
+                         OrderSelect(infoArray[j][0],SELECT_BY_TICKET,MODE_TRADES)==true &&
                          OrderSymbol()==Symbol() &&
                          OrderMagicNumber()==Magic && 
-                         OrderType() == OP_BUY) 
+                         OrderType()==OP_BUY) 
                          //Calculating order current time in minutes, used for closing orders
                          CurrOrderHoldTime = int((TimeCurrent() - OrderOpenTime())/60);
                          CurrOrderProfit = NormalizeDouble(OrderProfit() + OrderSwap() + OrderCommission(),2);
-         if(CurrOrderHoldTime >= MaxOrderCloseTimer && CurrOrderProfit > 0 )  ExitOutput=2;
-         if(CurrOrderHoldTime >= MaxOrderCloseTimer)  ExitOutput=2;
-        }
+            //if(CurrOrderHoldTime >= infoArray[j][1] && CurrOrderProfit > 0)  ExitOutput=2;
+            if(CurrOrderHoldTime >= infoArray[j][1])  ExitOutput=2; break;
+           }
      
      }
 
@@ -1148,6 +1168,49 @@ bool CloseOrderPosition(int TYPE,bool Journaling,int Magic,int Slip,int K,int Re
         }
      }
    if(CountPosOrders(Magic, TYPE)==0)return(true); else return(false);
+  }
+//+------------------------------------------------------------------+
+//| End of CLOSE/DELETE ORDERS AND POSITIONS 
+//+------------------------------------------------------------------+
+//+------------------------------------------------------------------+
+//| CLOSE/DELETE ORDERS AND POSITIONS
+//+------------------------------------------------------------------+
+void CloseOrderPositionTimer(int TYPE,bool Journaling,int Magic, int & infoArray [][], int Slip,int K,int Retry_Interval)
+  {
+// Type: Fixed Template 
+// Do not edit unless you know what you're doing
+
+// This function closes all 'expired' positions of type TYPE 
+
+
+     for(int i=0;i<ArraySize(infoArray);i++)
+       {
+         
+         
+         // We check only tickets that have a ticket!
+         if((TYPE==OP_BUY || TYPE==OP_SELL) && infoArray[i][0] != 0)
+           {
+            if(OrderSelect(infoArray[i][0],SELECT_BY_TICKET,MODE_TRADES)==true && OrderSymbol()==Symbol() && OrderMagicNumber()==Magic && OrderType()==TYPE)
+              {
+               //bringing more info from this order to decide if this should be closed
+               int CurrOrderHoldTime = int((TimeCurrent() - OrderOpenTime())/60);
+                     if(CurrOrderHoldTime >= infoArray[i][1])
+                     {
+                        bool Closing=false;
+                        double Price=0;
+                        color arrow_color=0;if(TYPE==OP_BUY)arrow_color=Blue;if(TYPE==OP_SELL)arrow_color=Green;
+                        if(Journaling)Print("EA Journaling: Trying to close position "+(string)OrderTicket()+" ...");
+                        HandleTradingEnvironment(Journaling,RetryInterval);
+                        if(TYPE==OP_BUY)Price=Bid; if(TYPE==OP_SELL)Price=Ask;
+                        Closing=OrderClose(OrderTicket(),OrderLots(),Price,Slip*K,arrow_color);
+                        if(Journaling && !Closing)Print("EA Journaling: Unexpected Error has happened. Error Description: "+GetErrorDescription(GetLastError()));
+                        if(Journaling && Closing)Print("EA Journaling: Position successfully closed.");
+                     }
+              }
+           }
+
+     }
+
   }
 //+------------------------------------------------------------------+
 //| End of CLOSE/DELETE ORDERS AND POSITIONS 
@@ -2097,6 +2160,85 @@ void UpdateVolTrailingList(bool Journaling,int Retry_Interval,int Magic)
   }
 //+------------------------------------------------------------------+
 //| End of Update Volatility Trailing Stops List                                          
+//+------------------------------------------------------------------+
+//+------------------------------------------------------------------+
+//| Update DSS Info List                                     
+//+------------------------------------------------------------------+
+
+void UpdateDSSInfoList(bool Journaling,int Retry_Interval,int Magic) 
+  {
+// Type: Fixed Template 
+// Do not edit unless you know what you're doing
+
+// This function clears the elements of your DSSInfoList if the corresponding positions has been closed
+
+   int ordersPos=OrdersTotal();
+   int orderTicketNumber;
+   bool doesPosExist;
+
+// Check the DSSInfoList, match with current list of positions. Make sure the all the positions exists. 
+// If it doesn't, it means there are positions that have been closed
+
+   for(int x=0; x<ArrayRange(DSSInfoList,0); x++)
+     { // Looping through all order number in list
+
+      doesPosExist=False;
+      orderTicketNumber=DSSInfoList[x,0];
+
+      if(orderTicketNumber!=0)
+        { // Order exists
+         for(int y=ordersPos-1; y>=0; y--)
+           { // Looping through all current open positions
+            if(OrderSelect(y,SELECT_BY_POS,MODE_TRADES)==true && OrderSymbol()==Symbol() && OrderMagicNumber()==Magic)
+              {
+               if(orderTicketNumber==OrderTicket())
+                 { // Checks order number in list against order number of current positions
+                  doesPosExist=True;
+                  break;
+                 }
+              }
+           }
+
+         if(doesPosExist==False)
+           { // Deletes elements if the order number does not match any current positions
+            DSSInfoList[x,0] = 0;
+            DSSInfoList[x,1] = 0;
+            DSSInfoList[x,2] = 0;
+           }
+        }
+     }
+  }
+//+------------------------------------------------------------------+
+//| End of Update DSS Info List                                           
+//+------------------------------------------------------------------+
+//+------------------------------------------------------------------+
+//| Set DSSInfoList
+//+------------------------------------------------------------------+
+
+void SetDSSInfoList(bool Journaling, int MyTimeHold, int MyMT, int tkt, int Magic)
+  {
+// Type: Fixed Template 
+// Do not edit unless you know what you're doing 
+
+//SetDSSInfoList(OnJournaling,AItimehold,MyMarketType, OrderNumber, MagicNumber);
+
+// This function adds new Time to hold order and market type records to array
+
+   for(int x=0; x<ArrayRange(DSSInfoList,0); x++) // Loop through elements in DSSInfoList
+     { 
+      if(DSSInfoList[x,0]==0)  // Checks if the element is empty
+        { 
+         DSSInfoList[x,0] = tkt; // Add order number
+         DSSInfoList[x,1] = MyTimeHold; // Add Time to hold the order in Hours 
+         DSSInfoList[x,2] = MyMT; // Add predicted Market Type
+         if(Journaling)Print("EA Journaling: For Magic Number... " + (string)Magic + " and the Order "+(string)DSSInfoList[x,0]+
+                             " we assign a Time to hold the order in Minutes "+(string)DSSInfoList[x,1]+";"+" predicted MarketType is: "+(string)DSSInfoList[x,2]);
+         break;
+        }
+     }
+  }
+//+------------------------------------------------------------------+
+//| End of Set DSSInfoList
 //+------------------------------------------------------------------+
 //+------------------------------------------------------------------+
 //| Set Volatility Trailing Stop
