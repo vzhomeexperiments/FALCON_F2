@@ -12,6 +12,7 @@
 #include <12_ReadDataFromDSS.mqh>
 #include <16_LogMarketType.mqh>
 #include <17_CheckIfMarketTypePolicyIsOn.mqh>
+#include <19_AssignMagicNumber.mqh>
 
 #property copyright "Copyright 2015, Black Algo Technologies Pte Ltd"
 #property copyright "Copyright 2020, Vladimir Zhbanko"
@@ -208,6 +209,8 @@ bool isFridayActive = false;
 //+------------------------------------------------------------------+
 int init()
   {
+   //Automatically Assign magic number
+   MagicNumber = AssignMagicNumber(Symbol(), MagicNumber);
    
 //------------- Decision Support Centre
 // Write file to the sandbox if it's does not exist
