@@ -82,7 +82,7 @@ extern int     entryTriggerM60                  = 100;  //trade will start when 
 extern int     predictor_periodH1               = 60;   //predictor period in minutes
 extern bool    closeAllOnFridays                = False; //close all orders on Friday 1hr before market closure
 extern bool    use_market_type                  = False; //use market type trading policy
-extern bool    UseDSSInfoList                   = False; //option to track DSS info using a ticket number
+extern bool    UseDSSInfoList                   = True; //option to track DSS info using a ticket number
 
 extern string  Header3="----------Position Sizing Settings-----------";
 extern string  Lot_explanation                  = "If IsSizingOn = true, Lots variable will be ignored";
@@ -408,24 +408,37 @@ int start()
 //----------DSS Info Array management -----------
 if(UseDSSInfoList) {
       UpdateDSSInfoList(OnJournaling,RetryInterval,MagicNumber);
-      //ReviewDSSInfoList(OnJournaling,AItimehold,MyMarketType,RetryInterval,MagicNumber);
+      
    }
 
 //----------Exit Rules (All Opened Positions)-----------
 
    // TDL 2: Setting up Exit rules. Modify the ExitSignal() function to suit your needs.
+   //Alert("Ticket "+(string)DSSInfoList[0][0]+"Time hold "+(string)DSSInfoList[0][1]);
 
-                                                //We need to change this function to use Tickets in arrays
+   if(UseDSSInfoList)
+     {
+                                     
    if(CountPosOrders(MagicNumber,OP_BUY)>=1 && (ExitSignalOnTimerTicket(2, MagicNumber, DSSInfoList)==2 || isFridayActive == true))
      { // Close Long Positions
       CloseOrderPositionTimer(OP_BUY, OnJournaling, MagicNumber, DSSInfoList, Slippage, P, RetryInterval); 
-
      }                                          //We need to change this function to use Tickets in arrays
    if(CountPosOrders(MagicNumber,OP_SELL)>=1 && (ExitSignalOnTimerTicket(1, MagicNumber, DSSInfoList)==1 || isFridayActive == true))
      { // Close Short Positions
       CloseOrderPositionTimer(OP_SELL, OnJournaling, MagicNumber, DSSInfoList, Slippage, P, RetryInterval);
      }
 
+     } else
+         {
+             if(CountPosOrders(MagicNumber,OP_BUY)>=1 && (ExitSignalOnTimerMagic(2, MagicNumber, TimeMaxHold)==2 || isFridayActive == true))
+              { // Close Long Positions
+               CloseOrderPosition(OP_BUY, OnJournaling, MagicNumber, Slippage, P, RetryInterval); 
+              }                                          //We need to change this function to use Tickets in arrays
+             if(CountPosOrders(MagicNumber,OP_SELL)>=1 && (ExitSignalOnTimerMagic(1, MagicNumber, TimeMaxHold)==1 || isFridayActive == true))
+              { // Close Short Positions
+               CloseOrderPosition(OP_SELL, OnJournaling, MagicNumber, Slippage, P, RetryInterval);
+              }
+         }              
 //----------Entry Rules (Market and Pending) -----------
 
    if(IsLossLimitBreached(IsLossLimitActivated,LossLimitPercent,OnJournaling,EntrySignal(CrossTriggered1))==False) 
@@ -615,7 +628,7 @@ int ExitSignalOnTimerMagic(int CrossOccurred, int Magic, int MaxOrderCloseTimer)
 // Type: Customisable 
 // Modify this function to suit your trading robot
 
-// This function checks for exit signals using a magic number
+// This function checks for exit signals using a magic number. Note that function will close multiple orders
 
    int   ExitOutput=0;
    int   CurrOrderHoldTime;
@@ -734,14 +747,15 @@ int ExitSignalOnTimerTicket(int CrossOccurred, int Magic, int & infoArray [][])
    int   CurrOrderHoldTime;
    double CurrOrderProfit;  
    
+      
    if(CrossOccurred==1) //checking sell orders only
      {
          //check the order time using ticket from array
          CurrOrderHoldTime = 0;
-         for(int j=0;j<ArraySize(infoArray);j++)
+         for(int j=0;j<ArrayRange(infoArray,0);j++)
            {
-            if(infoArray[j][0] != 0 &&
-                         OrderSelect(infoArray[j][0],SELECT_BY_TICKET,MODE_TRADES)==true &&
+           Print("Info Array Ticket Number: " + (string)infoArray[j][0]);
+            if(OrderSelect(infoArray[j][0],SELECT_BY_TICKET,MODE_TRADES)==true &&
                          OrderSymbol()==Symbol() &&
                          OrderMagicNumber()==Magic && 
                          OrderType()==OP_SELL) 
@@ -760,10 +774,9 @@ int ExitSignalOnTimerTicket(int CrossOccurred, int Magic, int & infoArray [][])
      {
          //checking the orders time using ticket from array
          CurrOrderHoldTime = 0;
-         for(int j=0;j<ArraySize(infoArray);j++)
+         for(int j=0;j<ArrayRange(infoArray,0);j++)
            {
-            if(infoArray[j][0] != 0 &&
-                         OrderSelect(infoArray[j][0],SELECT_BY_TICKET,MODE_TRADES)==true &&
+            if(OrderSelect(infoArray[j][0],SELECT_BY_TICKET,MODE_TRADES)==true &&
                          OrderSymbol()==Symbol() &&
                          OrderMagicNumber()==Magic && 
                          OrderType()==OP_BUY) 
@@ -1183,7 +1196,7 @@ void CloseOrderPositionTimer(int TYPE,bool Journaling,int Magic, int & infoArray
 // This function closes all 'expired' positions of type TYPE 
 
 
-     for(int i=0;i<ArraySize(infoArray);i++)
+     for(int i=0;i<ArrayRange(infoArray,0);i++)
        {
          
          
@@ -2224,7 +2237,7 @@ void SetDSSInfoList(bool Journaling, int MyTimeHold, int MyMT, int tkt, int Magi
 
 // This function adds new Time to hold order and market type records to array
 
-   for(int x=0; x<ArrayRange(DSSInfoList,0); x++) // Loop through elements in DSSInfoList
+   for(int x=0; x<ArraySize(DSSInfoList); x++) // Loop through elements in DSSInfoList
      { 
       if(DSSInfoList[x,0]==0)  // Checks if the element is empty
         { 
