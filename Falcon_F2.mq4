@@ -18,7 +18,7 @@
 #property copyright "Copyright 2020, Vladimir Zhbanko"
 #property link      "lucas@blackalgotechnologies.com"
 #property link      "https://vladdsm.github.io/myblog_attempt/"
-#property version   "1.007"  
+#property version   "1.008"  
 #property strict
 /* 
 
@@ -64,6 +64,9 @@ order time > timer and order value is positive
 Rewrite the code to use predictions from DSS (reading files)
 Add arrays to log DSS information at the moment of order opening
 Rewrite order closure logic to  proper time to close order
+# v 1.008
+Add architecture to store ticket numbers and array info into the flat files and update this info on platform restart
+
 */
 
 //+------------------------------------------------------------------+
@@ -75,14 +78,14 @@ extern int     TerminalType                     = 1;         //0 mean slave, 1 m
 extern bool    R_Management                     = true;      //R_Management true will enable Decision Support Centre (using R)
 extern int     Slippage                         = 3; // In Pips
 extern bool    IsECNbroker                      = false; // Is your broker an ECN
-extern bool    OnJournaling                     = false; // Add EA updates in the Journal Tab
+extern bool    OnJournaling                     = True; // Add EA updates in the Journal Tab
 extern bool    EnableDashboard                  = True; // Turn on Dashboard
 
 extern string  Header2="----------Trading Rules Variables -----------";
 extern int     entryTriggerM60                  = 100;  //trade will start when predicted value will exceed this threshold
 extern int     predictor_periodH1               = 60;   //predictor period in minutes
 extern bool    closeAllOnFridays                = False; //close all orders on Friday 1hr before market closure
-extern bool    use_market_type                  = False; //use market type trading policy
+extern bool    use_market_type                  = True; //use market type trading policy
 extern bool    UseDSSInfoList                   = True; //option to track DSS info using a ticket number
 
 extern string  Header3="----------Position Sizing Settings-----------";
@@ -249,6 +252,10 @@ int init()
    if(UseVolTrailingStops) ArrayResize(VolTrailingList,MaxPositionsAllowed,0);
    if(UseHiddenVolTrailing) ArrayResize(HiddenVolTrailingList,MaxPositionsAllowed,0);
    if(UseDSSInfoList) ArrayResize(DSSInfoList,MaxPositionsAllowed,0);
+   
+// Attempt to restore records of Array DSSInfoList using the flat file
+//RestoreDSSInfoList(string symbol, int magic, int chart_period, int & infoArray [][])
+      if(UseDSSInfoList) RestoreDSSInfoList(Symbol(), MagicNumber, 60, DSSInfoList);
    
 
    start();
@@ -453,7 +460,7 @@ if(UseDSSInfoList) {
                OrderNumber=OpenPositionMarket(OP_BUY,GetLot(IsSizingOn,Lots,Risk,YenPairAdjustFactor,Stop,P),Stop,Take,MagicNumber,Slippage,OnJournaling,P,IsECNbroker,MaxRetriesPerTick,RetryInterval);
    
                // Log current MarketType to the file in the sandbox
-               LogMarketType(MagicNumber, OrderNumber, MyMarketType);
+               LogMarketTypeInfo(MagicNumber, OrderNumber, MyMarketType, TimeMaxHold);
                
                // Log current Market Type and Time to Hold order in the arrays
                if(UseDSSInfoList) SetDSSInfoList(OnJournaling,TimeMaxHold,MyMarketType, OrderNumber, MagicNumber);
@@ -477,7 +484,7 @@ if(UseDSSInfoList) {
                OrderNumber=OpenPositionMarket(OP_SELL,GetLot(IsSizingOn,Lots,Risk,YenPairAdjustFactor,Stop,P),Stop,Take,MagicNumber,Slippage,OnJournaling,P,IsECNbroker,MaxRetriesPerTick,RetryInterval);
    
                // Log current MarketType to the file in the sandbox
-               LogMarketType(MagicNumber, OrderNumber, MyMarketType);
+               LogMarketTypeInfo(MagicNumber, OrderNumber, MyMarketType, TimeMaxHold);
                
                // Log current Market Type and Time to Hold order in the arrays
                if(UseDSSInfoList) SetDSSInfoList(OnJournaling,TimeMaxHold,MyMarketType, OrderNumber, MagicNumber);
@@ -2255,6 +2262,87 @@ void SetDSSInfoList(bool Journaling, int MyTimeHold, int MyMT, int tkt, int Magi
   }
 //+------------------------------------------------------------------+
 //| End of Set DSSInfoList
+//+------------------------------------------------------------------+
+//+------------------------------------------------------------------+
+//| Restore DSSInfoList
+//+------------------------------------------------------------------+
+
+void RestoreDSSInfoList(string symbol, int magic, int chart_period, int & infoArray [][])
+  {
+/* 
+@purpose: Function is needed to restore position of DSSInfoList Arrays in case of abrupt EA closure. In cases when there will be some open orders we will 
+want to restore this array using information from the flat file
+
+@description Need to:
+- read file and read content: ticket and other info
+- read open orders and retrieve their tickets, filter by magic number and symbol
+- compare: if ticket number match is found then populate the array 
+
+@detail: a very complicated function containing several for-loops
+
+*/
+int handle;
+string str;
+string sep=",";              // A separator as a character 
+ushort u_sep;                // The code of the separator character 
+string result[];             // An array to get string elements
+string full_line;            // String reserved for a file string
+
+//Read content of the file, store content into the array 'result[]'
+handle=FileOpen("AI_MarketType_"+symbol+IntegerToString(chart_period)+".csv",FILE_READ);
+if(handle==-1){Comment("Error - file does not exist"); str = "-1"; } 
+if(FileSize(handle)==0){FileClose(handle); Comment("Error - File is empty"); }
+
+       // analyse the content of each string line by line
+      while(!FileIsEnding(handle))
+      {
+            str=FileReadString(handle); //storing content of the current line
+            //full current line
+            full_line = StringSubstr(str,0);
+            //--- Get the separator code 
+            u_sep=StringGetCharacter(sep,0); 
+            //--- Split the string to substrings and store to the array result[] 
+            int k = StringSplit(str,u_sep,result); 
+            // extract content of the string array [for better clarify]
+      }
+      FileClose(handle);
+
+//Go trough all open orders, filter and get the ticket number
+for(int i=0;i<OrdersTotal();i++)
+  {
+   if(OrderSelect(i,SELECT_BY_POS, MODE_TRADES)==true && OrderSymbol() == symbol && OrderMagicNumber() == magic)
+     {
+      //extract ticket number
+      int tkt = OrderTicket();
+      //create another for loop to scroll through the content of the array result
+      for(int y=0;y<ArraySize(result);y++)
+        {
+         //check if array result contains tkt
+         if(StringToInteger(result[y])== tkt)
+           {
+            //find element of array equals to 0 (free to use)
+            for(int j=0;j<ArrayRange(infoArray,0);j++)
+              {
+               if(infoArray[j,0] == 0)
+                 {
+                  //store this ticket in array
+                  infoArray[j,0] = tkt;
+                  //store next element (time to hold) in the same array (weak point here: element of array may fail to convert to ingeger!)
+                  infoArray[j,2] = StringToInteger(result[y+2]);
+                  break; //exit this for loop as we have already populated free element of array
+                 }
+              } //end of for loop to scroll through DSSListArray
+            
+            break; //exit this for loop as we have already found this element
+           }
+        } //end of for loop to scroll through array result
+     }
+  } //end of for loop to scroll through order position
+
+
+  }
+//+------------------------------------------------------------------+
+//| End of Restore DSSInfoList
 //+------------------------------------------------------------------+
 //+------------------------------------------------------------------+
 //| Set Volatility Trailing Stop
