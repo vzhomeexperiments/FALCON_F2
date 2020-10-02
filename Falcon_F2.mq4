@@ -254,8 +254,7 @@ int init()
    if(UseDSSInfoList) ArrayResize(DSSInfoList,MaxPositionsAllowed,0);
    
 // Attempt to restore records of Array DSSInfoList using the flat file
-//RestoreDSSInfoList(string symbol, int magic, int chart_period, int & infoArray [][])
-      if(UseDSSInfoList) RestoreDSSInfoList(Symbol(), MagicNumber, 60, DSSInfoList);
+      if(UseDSSInfoList) RestoreDSSInfoList(Symbol(), MagicNumber, DSSInfoList);
    
 
    start();
@@ -2267,7 +2266,7 @@ void SetDSSInfoList(bool Journaling, int MyTimeHold, int MyMT, int tkt, int Magi
 //| Restore DSSInfoList
 //+------------------------------------------------------------------+
 
-void RestoreDSSInfoList(string symbol, int magic, int chart_period, int & infoArray [][])
+void RestoreDSSInfoList(string symbol, int magic, int & infoArray [][])
   {
 /* 
 @purpose: Function is needed to restore position of DSSInfoList Arrays in case of abrupt EA closure. In cases when there will be some open orders we will 
@@ -2289,7 +2288,7 @@ string result[];             // An array to get string elements
 string full_line;            // String reserved for a file string
 
 //Read content of the file, store content into the array 'result[]'
-handle=FileOpen("AI_MarketType_"+symbol+IntegerToString(chart_period)+".csv",FILE_READ);
+handle=FileOpen("MarketTypeLog"+IntegerToString(magic)+".csv",FILE_READ);
 if(handle==-1){Comment("Error - file does not exist"); str = "-1"; } 
 if(FileSize(handle)==0){FileClose(handle); Comment("Error - File is empty"); }
 
@@ -2328,7 +2327,7 @@ for(int i=0;i<OrdersTotal();i++)
                   //store this ticket in array
                   infoArray[j,0] = tkt;
                   //store next element (time to hold) in the same array (weak point here: element of array may fail to convert to ingeger!)
-                  infoArray[j,2] = StringToInteger(result[y+2]);
+                  infoArray[j,1] = StringToInteger(result[y+2]);
                   break; //exit this for loop as we have already populated free element of array
                  }
               } //end of for loop to scroll through DSSListArray
