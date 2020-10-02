@@ -2288,7 +2288,7 @@ string result[];             // An array to get string elements
 string full_line;            // String reserved for a file string
 
 //Read content of the file, store content into the array 'result[]'
-handle=FileOpen("MarketTypeLog"+IntegerToString(magic)+".csv",FILE_READ);
+handle=FileOpen("MarketTypeLog"+IntegerToString(magic)+".csv",FILE_READ|FILE_SHARE_READ);
 if(handle==-1){Comment("Error - file does not exist"); str = "-1"; } 
 if(FileSize(handle)==0){FileClose(handle); Comment("Error - File is empty"); }
 
@@ -2322,17 +2322,16 @@ for(int i=0;i<OrdersTotal();i++)
             //find element of array equals to 0 (free to use)
             for(int j=0;j<ArrayRange(infoArray,0);j++)
               {
-               if(infoArray[j,0] == 0)
+               if(infoArray[j,0] == 0 && infoArray[j,1] && infoArray[j,2])
                  {
                   //store this ticket in array
                   infoArray[j,0] = tkt;
                   //store next element (time to hold) in the same array (weak point here: element of array may fail to convert to ingeger!)
                   infoArray[j,1] = StringToInteger(result[y+2]);
+                  //debugging: write_debug_array()
                   break; //exit this for loop as we have already populated free element of array
                  }
               } //end of for loop to scroll through DSSListArray
-            
-            break; //exit this for loop as we have already found this element
            }
         } //end of for loop to scroll through array result
      }
