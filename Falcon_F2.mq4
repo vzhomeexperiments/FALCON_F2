@@ -2302,40 +2302,44 @@ if(FileSize(handle)==0){FileClose(handle); Comment("Error - File is empty"); }
             u_sep=StringGetCharacter(sep,0); 
             //--- Split the string to substrings and store to the array result[] 
             int k = StringSplit(str,u_sep,result); 
-            // extract content of the string array [for better clarify]
+            // array result will contain only 1 line, we must perform data manipulation for each line and only then to close file
+               //Go trough all open orders, filter and get the ticket number
+               for(int i=0;i<OrdersTotal();i++)
+                 {
+                  if(OrderSelect(i,SELECT_BY_POS, MODE_TRADES)==true && OrderSymbol() == symbol && OrderMagicNumber() == magic)
+                    {
+                     //extract ticket number
+                     int tkt = OrderTicket();
+                     //create another for loop to scroll through the content of the array result
+                     for(int y=0;y<ArraySize(result);y++)
+                       {
+                        //check if array result contains tkt
+                        if(StringToInteger(result[y])== tkt)
+                          {
+                           //find element of array equals to 0 (free to use)
+                           for(int j=0;j<ArrayRange(infoArray,0);j++)
+                             {
+                              if(infoArray[j,0] == 0 && infoArray[j,1] == 0 && infoArray[j,2] == 0)
+                                {
+                                 //store this ticket in array
+                                 infoArray[j,0] = tkt;
+                                 //store next element (time to hold) in the same array (weak point here: element of array may fail to convert to ingeger!)
+                                 infoArray[j,1] = StringToInteger(result[y+2]);
+                                 //debugging: write_debug_array()
+                                 break; //exit this for loop as we have already populated free element of array
+                                }
+                             } //end of for loop to scroll through DSSListArray
+                          }
+                       } //end of for loop to scroll through array result
+                    }
+                 } //end of for loop to scroll through order position
+            
+            
+            
       }
       FileClose(handle);
 
-//Go trough all open orders, filter and get the ticket number
-for(int i=0;i<OrdersTotal();i++)
-  {
-   if(OrderSelect(i,SELECT_BY_POS, MODE_TRADES)==true && OrderSymbol() == symbol && OrderMagicNumber() == magic)
-     {
-      //extract ticket number
-      int tkt = OrderTicket();
-      //create another for loop to scroll through the content of the array result
-      for(int y=0;y<ArraySize(result);y++)
-        {
-         //check if array result contains tkt
-         if(StringToInteger(result[y])== tkt)
-           {
-            //find element of array equals to 0 (free to use)
-            for(int j=0;j<ArrayRange(infoArray,0);j++)
-              {
-               if(infoArray[j,0] == 0 && infoArray[j,1] && infoArray[j,2])
-                 {
-                  //store this ticket in array
-                  infoArray[j,0] = tkt;
-                  //store next element (time to hold) in the same array (weak point here: element of array may fail to convert to ingeger!)
-                  infoArray[j,1] = StringToInteger(result[y+2]);
-                  //debugging: write_debug_array()
-                  break; //exit this for loop as we have already populated free element of array
-                 }
-              } //end of for loop to scroll through DSSListArray
-           }
-        } //end of for loop to scroll through array result
-     }
-  } //end of for loop to scroll through order position
+
 
 
   }
