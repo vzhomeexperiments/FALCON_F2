@@ -253,8 +253,8 @@ int init()
    if(UseHiddenVolTrailing) ArrayResize(HiddenVolTrailingList,MaxPositionsAllowed,0);
    if(UseDSSInfoList) ArrayResize(DSSInfoList,MaxPositionsAllowed,0);
    
-// Attempt to restore records of Array DSSInfoList using the flat file
-      if(UseDSSInfoList) RestoreDSSInfoList(Symbol(), MagicNumber, DSSInfoList);
+// Restore records of Array DSSInfoList using the flat file
+   if(UseDSSInfoList) RestoreDSSInfoList(Symbol(), MagicNumber, DSSInfoList);
    
 
    start();
@@ -772,7 +772,7 @@ int ExitSignalOnTimerTicket(int CrossOccurred, int Magic, int & infoArray [][])
                          CurrOrderHoldTime = int((TimeCurrent() - OrderOpenTime())/60);
                          CurrOrderProfit = NormalizeDouble(OrderProfit() + OrderSwap() + OrderCommission(),2);
             //if(CurrOrderHoldTime >= infoArray[j][1] && CurrOrderProfit > 0)  ExitOutput=1;
-            if(CurrOrderHoldTime >= infoArray[j][1])  ExitOutput=1; break;
+            if(CurrOrderHoldTime >= infoArray[j][1]) { ExitOutput=1; break;}
            }
 
         
@@ -793,7 +793,7 @@ int ExitSignalOnTimerTicket(int CrossOccurred, int Magic, int & infoArray [][])
                          CurrOrderHoldTime = int((TimeCurrent() - OrderOpenTime())/60);
                          CurrOrderProfit = NormalizeDouble(OrderProfit() + OrderSwap() + OrderCommission(),2);
             //if(CurrOrderHoldTime >= infoArray[j][1] && CurrOrderProfit > 0)  ExitOutput=2;
-            if(CurrOrderHoldTime >= infoArray[j][1])  ExitOutput=2; break;
+            if(CurrOrderHoldTime >= infoArray[j][1]) { ExitOutput=2; break;}
            }
      
      }
@@ -2323,8 +2323,10 @@ if(FileSize(handle)==0){FileClose(handle); Comment("Error - File is empty"); }
                                 {
                                  //store this ticket in array
                                  infoArray[j,0] = tkt;
-                                 //store next element (time to hold) in the same array (weak point here: element of array may fail to convert to ingeger!)
+                                 //store next element (time to hold) in the same array
                                  infoArray[j,1] = StringToInteger(result[y+2]);
+                                 //store next element (market type) in the same array
+                                 infoArray[j,2] = StringToInteger(result[y+1]);
                                  //debugging: write_debug_array()
                                  break; //exit this for loop as we have already populated free element of array
                                 }
