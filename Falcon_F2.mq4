@@ -321,12 +321,14 @@ int start()
          FlagBuy   = GetTradeFlagCondition(AIPriceChange, //predicted change from DSS
                                            AItrigger, //absolute value to enter trade
                                            AImaxperf,
+                                           MyMarketType,
                                            MyMarketTypeConf,
                                            "buy"); //which direction to check "buy" "sell"
              
          FlagSell = GetTradeFlagCondition(AIPriceChange, //predicted change from DSS
                                           AItrigger, //absolute value to enter trade
                                           AImaxperf,
+                                          MyMarketType,
                                           MyMarketTypeConf,
                                           "sell"); //which direction to check "buy" "sell"
                            
@@ -2780,7 +2782,8 @@ string GetErrorDescription(int error)
 bool GetTradeFlagCondition(double ExpectedMoveM60, //predicted change from DSS
                            double EntryTradeTriggerM60,//absolute value to enter trade
                            double ModelQualityM60, //achieved model quality
-                           double MTConfidence,  // Achieved prediction confidence
+                           int    MT, //Market Type
+                           double MTConfidence,  // Achieved prediction confidence for Market Type
                            string DirectionCheck) //which direction to check "buy" "sell"
   {
 // This function checks trade flag based on hard coded logic and return either false or true
@@ -2790,11 +2793,13 @@ bool GetTradeFlagCondition(double ExpectedMoveM60, //predicted change from DSS
    if(DirectionCheck == "buy")       //logic tested by manually setting up the predictors in the files and disabling predictors tasks in Windows Task Scheduler: 
                                      //buy : USDCHF M1 ->   25; USDCHF M15 ->  25; USDCHF M60 ->  25
                                      //sell: USDCHF M1 ->  -25; USDCHF M15 -> -25; USDCHF M60 -> -25
-     { if(ExpectedMoveM60 > EntryTradeTriggerM60 && ModelQualityM60 > 0.5 && MTConfidence > 0.97) result = True;     } 
+     { if(ExpectedMoveM60 > EntryTradeTriggerM60 && ModelQualityM60 > 0.5 && MTConfidence > 0.97 &&
+          (MT != 3 || MT != 4)) result = True;     } 
     else if(DirectionCheck == "sell"){    //logic tested by manually setting up the predictors in the files and disabling predictors tasks in Windows Task Scheduler: 
                                          //buy : USDCHF M1 ->   5; USDCHF M15 ->  55; USDCHF M60 ->  55
                                          //sell: USDCHF M1 ->  -5; USDCHF M15 -> -55; USDCHF M60 -> -
-       if(ExpectedMoveM60 < (-1*EntryTradeTriggerM60) && ModelQualityM60 > 0.5 && MTConfidence > 0.97) result = True;}
+       if(ExpectedMoveM60 < (-1*EntryTradeTriggerM60) && ModelQualityM60 > 0.5 && MTConfidence > 0.97 &&
+          (MT != 1 || MT != 2)) result = True;}
       
     else result = false;
                                       
