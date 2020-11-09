@@ -84,6 +84,7 @@ extern bool    EnableDashboard                  = True; // Turn on Dashboard
 extern string  Header2="----------Trading Rules Variables -----------";
 extern int     entryTriggerM60                  = 100;  //trade will start when predicted value will exceed this threshold
 extern int     predictor_periodH1               = 60;   //predictor period in minutes
+extern int     min_model_quality                = 10000; //arbitrary unit of model quality
 extern bool    closeAllOnFridays                = False; //close all orders on Friday 1hr before market closure
 extern bool    use_market_type                  = True; //use market type trading policy
 extern bool    UseDSSInfoList                   = True; //option to track DSS info using a ticket number
@@ -2793,12 +2794,12 @@ bool GetTradeFlagCondition(double ExpectedMoveM60, //predicted change from DSS
    if(DirectionCheck == "buy")       //logic tested by manually setting up the predictors in the files and disabling predictors tasks in Windows Task Scheduler: 
                                      //buy : USDCHF M1 ->   25; USDCHF M15 ->  25; USDCHF M60 ->  25
                                      //sell: USDCHF M1 ->  -25; USDCHF M15 -> -25; USDCHF M60 -> -25
-     { if(ExpectedMoveM60 > EntryTradeTriggerM60 && ModelQualityM60 > 0.5 && MTConfidence > 0.97 &&
+     { if(ExpectedMoveM60 > EntryTradeTriggerM60 && ModelQualityM60 > min_model_quality && MTConfidence > 0.97 &&
           (MT != 3 || MT != 4)) result = True;     } 
     else if(DirectionCheck == "sell"){    //logic tested by manually setting up the predictors in the files and disabling predictors tasks in Windows Task Scheduler: 
                                          //buy : USDCHF M1 ->   5; USDCHF M15 ->  55; USDCHF M60 ->  55
                                          //sell: USDCHF M1 ->  -5; USDCHF M15 -> -55; USDCHF M60 -> -
-       if(ExpectedMoveM60 < (-1*EntryTradeTriggerM60) && ModelQualityM60 > 0.5 && MTConfidence > 0.97 &&
+       if(ExpectedMoveM60 < (-1*EntryTradeTriggerM60) && ModelQualityM60 > min_model_quality && MTConfidence > 0.97 &&
           (MT != 1 || MT != 2)) result = True;}
       
     else result = false;
