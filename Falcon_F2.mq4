@@ -2794,21 +2794,14 @@ bool GetTradeFlagCondition(double ExpectedMoveM60, //predicted change from DSS
 // This function checks trade flag based on hard coded logic and return either false or true
 
    bool result=False;
+   bool Bull = False;
+   bool Bear = False;
+   if( (MT == 3) || (MT == 4) || (MT == 5) || (MT == 6)) Bear = True;
+   if( (MT == 1) || (MT == 2) || (MT == 5) || (MT == 6) ) Bull = True;
    
-   if(DirectionCheck == "buy")       //logic tested by manually setting up the predictors in the files and disabling predictors tasks in Windows Task Scheduler: 
-                                     //buy : USDCHF M1 ->   25; USDCHF M15 ->  25; USDCHF M60 ->  25
-                                     //sell: USDCHF M1 ->  -25; USDCHF M15 -> -25; USDCHF M60 -> -25
-     { if(ExpectedMoveM60 > EntryTradeTriggerM60 && ModelQualityM60 > FirstQuantile && MTConfidence > 0.97 &&
-          (MT != 3 || MT != 4)) result = True;     } 
-    else if(DirectionCheck == "sell"){    //logic tested by manually setting up the predictors in the files and disabling predictors tasks in Windows Task Scheduler: 
-                                         //buy : USDCHF M1 ->   5; USDCHF M15 ->  55; USDCHF M60 ->  55
-                                         //sell: USDCHF M1 ->  -5; USDCHF M15 -> -55; USDCHF M60 -> -
-       if(ExpectedMoveM60 < (-1*EntryTradeTriggerM60) && ModelQualityM60 > FirstQuantile && MTConfidence > 0.97 &&
-          (MT != 1 || MT != 2)) result = True;}
+   if(DirectionCheck == "buy" && ExpectedMoveM60 > EntryTradeTriggerM60 && ModelQualityM60 > FirstQuantile && MTConfidence > 0.97 && Bull) result = True; 
+   else if(DirectionCheck == "sell" && ExpectedMoveM60 < (-1*EntryTradeTriggerM60) && ModelQualityM60 > FirstQuantile && MTConfidence > 0.97 && Bear) result = True;
       
-    else result = false;
-                                      
-
    return(result);
 
 /* description: 
