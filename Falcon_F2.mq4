@@ -522,8 +522,8 @@ if(UseDSSInfoList) {
                                             "AItrigger ", AItrigger,
                                             "AItimehold ", int(AItimehold),
                                             "AImaxperf ", AImaxperf,
-                                            "Nothing ", 1,
-                                            "Nothing ", 1); 
+                                            "AIminperf ", int(AIminperf),
+                                            "MyMarketTypeConf ", MyMarketTypeConf); 
 
    return(0);
   }
