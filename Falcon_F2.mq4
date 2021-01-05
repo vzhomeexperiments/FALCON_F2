@@ -18,62 +18,20 @@
 #property copyright "Copyright 2020, Vladimir Zhbanko"
 #property link      "lucas@blackalgotechnologies.com"
 #property link      "https://vladdsm.github.io/myblog_attempt/"
-#property version   "1.008"  
+#property version   "1.009"  
 #property strict
 /* 
 
 Falcon F2: 
-- Adding specific functions to manage Decision Support System
-- Adding trade direction and asset price change prediction from Decision Support System
-- Modular function that generate trades for short medium or long term trades
-- Entry decisions are only using Regression Deep Learning Models
-# Trading directions:
-# 1. Long  BU
-# 2. Short BE
-# Predicted changes of price:
-# --> in absolute values on M1x75, M15x75, H1x100
-# Trade Entry is triggered when:
-# A. H1 Direction is set for Long Term Trend
-# B. M15 Change is in the same direction and having Sufficient Target [defined and read from DSS]
-# C. M1 Direction is predicted for the same side
-# Money Management
-# A. Predicted Change is defining Take Profit Level
-# B. Stop loss will depend on the Predicted Change
-# C. Only one order can be opened at the time
-# Trade Exit is triggered when:
-# A. Time of the order is reached fixed value e.g 1125 min
-
-# v 1.002
-Added option CloseOnFriday
-- closing all positions 1hr before events
-- inhibit opening of new positions
-# v 1.003
-Changed default options
-Removed direction mechanism
-# v 1.004
-Add Market Type indication on the dashbouard
-# v 1.005
-Use only 2 models to entry
-Changed base parameters
-Modified exit rules
-# v 1.006
-Use exit condition as
-Either take profit or stop loss or,
-order time > timer and order value is positive
-# v 1.007
-Rewrite the code to use predictions from DSS (reading files)
-Add arrays to log DSS information at the moment of order opening
-Rewrite order closure logic to  proper time to close order
-# v 1.008
-Add architecture to store ticket numbers and array info into the flat files and update this info on platform restart
-
+# v 1.009
+Fully automated magic number /settings assignment
 */
 
 //+------------------------------------------------------------------+
 //| Setup                                               
 //+------------------------------------------------------------------+
 extern string  Header1="----------EA General Settings-----------";
-extern int     MagicNumber                      = 9139201;
+extern string  StrategyNumber                   = "39";
 extern int     TerminalType                     = 1;         //0 mean slave, 1 mean master
 extern bool    R_Management                     = true;      //R_Management true will enable Decision Support Centre (using R)
 extern int     Slippage                         = 3; // In Pips
@@ -193,6 +151,7 @@ int DSSInfoList[][3]; // First dimension is for position ticket numbers, second 
                       // SetDSSInfoList - record needed data at the moment of order opening
 
 string  InternalHeader3="----------Decision Support Variables-----------";
+int MagicNumber;
 bool     TradeAllowed = true; 
 bool     isMarketTypePolicyON = true;
 bool FlagBuy, FlagSell;       //boolean flags to limit direction of trades
@@ -213,7 +172,15 @@ bool isFridayActive = false;
 int init()
   {
    //Automatically Assign magic number
-   MagicNumber = AssignMagicNumber(Symbol(), MagicNumber);
+   MagicNumber = AssignMagicNumber(Symbol(), StrategyNumber);
+   //Automatically derive terminal number and money management settings
+   if(T_Num() == 3)
+     {
+      IsSizingOn                       = True;
+      Risk                             = 3; // Risk per trade (in percentage)
+      MaxPositionsAllowed              = 1;
+      TerminalType                     = 0;
+     }
    
 //------------- Decision Support Centre
 // Write file to the sandbox if it's does not exist
@@ -288,7 +255,7 @@ int start()
      {
          
          //code that only executed once a bar
-         OrderProfitToCSV(T_Num(MagicNumber));                      //write previous orders profit results for auto analysis in R
+         OrderProfitToCSV(T_Num());                      //write previous orders profit results for auto analysis in R
          MyMarketType = ReadMarketFromCSV(Symbol(), 60);            //read analytical output from the Decision Support System
          MyMarketTypeConf = ReadDataFromDSS(Symbol(), 60, "read_mt_conf");
          //get the Reinforcement Learning policy for specific Market Type
