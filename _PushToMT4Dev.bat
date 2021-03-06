@@ -5,9 +5,9 @@ rem Use in case some content needs to be replaced (reverted from Version Control
 setlocal enabledelayedexpansion
 
 :: Source Directory where Version Control Repository is located
-set SOURCE_DIR="C:\Users\fxtrams\Documents\000_TradingRepo\FALCON_F2"
+set SOURCE_DIR="%PATH_DSS_Repo%\FALCON_F2"
 :: Destination Directory where Expert Advisor is located
-set DEST_DIR="C:\Program Files (x86)\FxPro - Terminal2\MQL4\Experts\FALCON_F2"
+set DEST_DIR="%PATH_T2_E%\FALCON_F2"
 
 ROBOCOPY %SOURCE_DIR% %DEST_DIR% *.mq4
 

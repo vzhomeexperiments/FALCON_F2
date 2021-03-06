@@ -8,21 +8,21 @@ setlocal enabledelayedexpansion
 
 :: ### TERMINAL 1 ###
 :: delete Order Results files
-del "C:\Program Files (x86)\FxPro - Terminal1\MQL4\Files\OrdersResultsT1.csv" \q
+del "%PATH_T1%\OrdersResultsT1.csv" \q
 :: delete files with MarketType prediction
-del "C:\Program Files (x86)\FxPro - Terminal1\MQL4\Files\AI_MarketType_*.csv" \q
+del "%PATH_T1%\AI_MarketType_*.csv" \q
 :: delete files with MarketType log
-del "C:\Program Files (x86)\FxPro - Terminal1\MQL4\Files\MarketTypeLog*.csv" \q
+del "%PATH_T1%\MarketTypeLog*.csv" \q
 :: ### TERMINAL 3 ###
 :: delete Order Results files
-del "C:\Program Files (x86)\FxPro - Terminal3\MQL4\Files\OrdersResultsT3.csv" \q
+del "%PATH_T3%\OrdersResultsT3.csv" \q
 :: delete files with MarketType prediction
-del "C:\Program Files (x86)\FxPro - Terminal3\MQL4\Files\AI_MarketType_*.csv" \q
+del "%PATH_T3%\AI_MarketType_*.csv" \q
 :: delete files with MarketType log
-del "C:\Program Files (x86)\FxPro - Terminal3\MQL4\Files\MarketTypeLog*.csv" \q
+del "%PATH_T3%\MarketTypeLog*.csv" \q
 :: delete files with Reinforcement Learning Policy
-del "C:\Program Files (x86)\FxPro - Terminal3\MQL4\Files\SystemControlMT*.csv" \q
+del "%PATH_T3%\SystemControlMT*.csv" \q
 
 :: delete control files with extension *.rds
-del "C:\Users\fxtrams\Documents\000_TradingRepo\R_tradecontrol\_RL_MT\control\*.rds" \q
+del "%PATH_DSS_Repo%\R_tradecontrol\_RL_MT\control\*.rds" \q
 
