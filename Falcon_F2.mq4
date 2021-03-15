@@ -5,7 +5,6 @@
 //+------------------------------------------------------------------+
 #include <01_GetHistoryOrder.mqh>
 #include <02_OrderProfitToCSV.mqh>
-#include <03_ReadCommandFromCSV.mqh>
 #include <08_TerminalNumber.mqh>
 #include <10_isNewBar.mqh>
 #include <12_ReadDataFromDSS.mqh>
@@ -40,6 +39,7 @@ extern bool    EnableDashboard                  = True; // Turn on Dashboard
 extern string  Header2="----------Trading Rules Variables -----------";
 extern int     entryTriggerM60                  = 100;  //trade will start when predicted value will exceed this threshold
 extern int     predictor_periodH1               = 60;   //predictor period in minutes
+extern int     period_Bars_CloseOrder           = 60;   //period in minutes to count order close bars
 extern bool    closeAllOnFridays                = False; //close all orders on Friday 1hr before market closure
 extern bool    use_market_type                  = True; //use market type trading policy
 extern bool    UseDSSInfoList                   = True; //option to track DSS info using a ticket number
@@ -187,7 +187,7 @@ int init()
    ReferenceTime = TimeCurrent(); // record time for order history function
    
    //write file system control to enable initial trading
-   TradeAllowed = ReadCommandFromCSV(MagicNumber);
+   TradeAllowed = BoolReadDataFromDSS(MagicNumber, 0, "read_command");
       if(TradeAllowed == false)
      {
       Comment("Trade is not allowed");
@@ -305,7 +305,7 @@ int start()
          TimeMaxHold = int(AItimehold * 60); //time to max hold the order in minutes
          
          //TradeAllowed is checking Macroeconomic events (derived from Decision Support System)          
-         TradeAllowed = ReadCommandFromCSV(MagicNumber);              //read command from R to make sure trading is allowed
+         TradeAllowed = BoolReadDataFromDSS(MagicNumber, 0, "read_command");     //read command from R to make sure trading is allowed
          
        
      }
@@ -400,13 +400,15 @@ if(UseDSSInfoList) {
    if(UseDSSInfoList)
      {
                                      
-   if(CountPosOrders(MagicNumber,OP_BUY)>=1 && (ExitSignalOnTimerTicket(2, MagicNumber, DSSInfoList)==2 || isFridayActive == true))
+   if(CountPosOrders(MagicNumber,OP_BUY)>=1 && (ExitSignalOnTimerTicketBars(2, MagicNumber, period_Bars_CloseOrder, DSSInfoList)==2 || isFridayActive == true))
      { // Close Long Positions
-      CloseOrderPositionTimer(OP_BUY, OnJournaling, MagicNumber, DSSInfoList, Slippage, P, RetryInterval); 
+      CloseOrderPositionTimerBars(OP_BUY, OnJournaling, MagicNumber, period_Bars_CloseOrder, DSSInfoList, Slippage, P, RetryInterval); 
+      UpdateDSSInfoList(OnJournaling,RetryInterval,MagicNumber,DSSInfoList);
      }                                          //We need to change this function to use Tickets in arrays
-   if(CountPosOrders(MagicNumber,OP_SELL)>=1 && (ExitSignalOnTimerTicket(1, MagicNumber, DSSInfoList)==1 || isFridayActive == true))
+   if(CountPosOrders(MagicNumber,OP_SELL)>=1 && (ExitSignalOnTimerTicketBars(1, MagicNumber, period_Bars_CloseOrder, DSSInfoList)==1 || isFridayActive == true))
      { // Close Short Positions
-      CloseOrderPositionTimer(OP_SELL, OnJournaling, MagicNumber, DSSInfoList, Slippage, P, RetryInterval);
+      CloseOrderPositionTimerBars(OP_SELL, OnJournaling, MagicNumber, period_Bars_CloseOrder, DSSInfoList, Slippage, P, RetryInterval);
+      UpdateDSSInfoList(OnJournaling,RetryInterval,MagicNumber,DSSInfoList);
      }
 
      } else
@@ -602,6 +604,50 @@ int ExitSignal(int CrossOccurred)
 //| End of Exit SIGNAL                                               
 //+------------------------------------------------------------------+
 //+------------------------------------------------------------------+
+//| CLOSE/DELETE ORDERS AND POSITIONS
+//+------------------------------------------------------------------+
+void CloseOrderPositionTimerBars(int TYPE,bool Journaling,int Magic, int BarTimeframeMin, int & infoArray [][], int Slip,int K,int Retry_Interval)
+  {
+// Type: Fixed Template 
+// Do not edit unless you know what you're doing
+
+// This function closes all 'expired' positions of type TYPE 
+   int RequiredOrderTimeBars;
+   int CurrOrderHoldTimeBars = 0;
+
+     for(int i=0;i<ArrayRange(infoArray,0);i++)
+       {
+         RequiredOrderTimeBars = infoArray[i][1]/BarTimeframeMin;
+         
+         // We check only tickets that have a ticket!
+         if((TYPE==OP_BUY || TYPE==OP_SELL) && infoArray[i][0] != 0)
+           {
+            if(OrderSelect(infoArray[i][0],SELECT_BY_TICKET,MODE_TRADES)==true && OrderSymbol()==Symbol() && OrderMagicNumber()==Magic && OrderType()==TYPE)
+              {
+               //bringing more info from this order to decide if this should be closed
+               CurrOrderHoldTimeBars = iBarShift(Symbol(), BarTimeframeMin,OrderOpenTime(),true);
+                     if(CurrOrderHoldTimeBars >= RequiredOrderTimeBars)
+                     {
+                        bool Closing=false;
+                        double Price=0;
+                        color arrow_color=0;if(TYPE==OP_BUY)arrow_color=Blue;if(TYPE==OP_SELL)arrow_color=Green;
+                        if(Journaling)Print("EA Journaling: Trying to close position "+(string)OrderTicket()+" ...");
+                        HandleTradingEnvironment(Journaling,Retry_Interval);
+                        if(TYPE==OP_BUY)Price=Bid; if(TYPE==OP_SELL)Price=Ask;
+                        Closing=OrderClose(OrderTicket(),OrderLots(),Price,Slip*K,arrow_color);
+                        if(Journaling && !Closing)Print("EA Journaling: Unexpected Error has happened. Error Description: "+GetErrorDescription(GetLastError()));
+                        if(Journaling && Closing)Print("EA Journaling: Position successfully closed.");
+                     }
+              }
+           }
+
+     }
+
+  }
+//+------------------------------------------------------------------+
+//| End of CLOSE/DELETE ORDERS AND POSITIONS 
+//+------------------------------------------------------------------+
+//+------------------------------------------------------------------+
 //| Exit SIGNAL ON TIMER MAGIC                                            |
 //+------------------------------------------------------------------+
 int ExitSignalOnTimerMagic(int CrossOccurred, int Magic, int MaxOrderCloseTimer)
@@ -711,6 +757,65 @@ int ExitSignalOnAI(int CrossOccurred, int Magic, double CurrPrediction)
   }
 //+------------------------------------------------------------------+
 //| End of Exit SIGNAL ON AI                           
+//+------------------------------------------------------------------+
+//+------------------------------------------------------------------+
+//| Exit SIGNAL ON TIMER TICKET                                            |
+//+------------------------------------------------------------------+
+int ExitSignalOnTimerTicketBars(int CrossOccurred, int Magic, int BarTimeframeMin, int & infoArray [][])
+  {
+// Type: Customisable 
+// Modify this function to suit your trading robot
+
+// This function checks for exit signals for each open order separately using the information inside the array
+// If this will output
+//                     1 then one or more SELL orders shall be closed
+// This function will calculate order open time in BARS!
+
+   int   ExitOutput=0;
+   int RequiredOrderTimeBars;
+   int CurrOrderHoldTimeBars = 0;
+      
+   if(CrossOccurred==1) //checking sell orders only
+     {
+         //check the order time using ticket from array
+         for(int j=0;j<ArrayRange(infoArray,0);j++)
+           {
+           //Print("Info Array Ticket Number: " + (string)infoArray[j][0]);
+            if(OrderSelect(infoArray[j][0],SELECT_BY_TICKET,MODE_TRADES)==true &&
+                         OrderSymbol()==Symbol() &&
+                         OrderMagicNumber()==Magic && 
+                         OrderType()==OP_SELL) 
+                         //Calculating order open time shift in bars to avoid closing order after the weekend
+                         CurrOrderHoldTimeBars = iBarShift(Symbol(), BarTimeframeMin,OrderOpenTime(),true);
+                         RequiredOrderTimeBars = infoArray[j][1]/BarTimeframeMin;
+            if(CurrOrderHoldTimeBars >= RequiredOrderTimeBars) { ExitOutput=1; break;}
+           }
+
+        
+     
+     }
+
+   if(CrossOccurred==2) //checking buy orders only
+     {
+         //checking the orders time using ticket from array
+         for(int j=0;j<ArrayRange(infoArray,0);j++)
+           {
+            if(OrderSelect(infoArray[j][0],SELECT_BY_TICKET,MODE_TRADES)==true &&
+                         OrderSymbol()==Symbol() &&
+                         OrderMagicNumber()==Magic && 
+                         OrderType()==OP_BUY) 
+                         //Calculating order open time shift in bars to avoid closing order after the weekend
+                         CurrOrderHoldTimeBars = iBarShift(Symbol(), BarTimeframeMin,OrderOpenTime(),true);
+                         RequiredOrderTimeBars = infoArray[j][1]/BarTimeframeMin;
+            if(CurrOrderHoldTimeBars >= RequiredOrderTimeBars) { ExitOutput=2; break;}
+           }
+     
+     }
+
+   return(ExitOutput);
+  }
+//+------------------------------------------------------------------+
+//| End of Exit SIGNAL ON TIMER TICKET                          
 //+------------------------------------------------------------------+
 //+------------------------------------------------------------------+
 //| Exit SIGNAL ON TIMER TICKET                                            |
