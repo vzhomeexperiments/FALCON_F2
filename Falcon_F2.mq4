@@ -315,12 +315,16 @@ int start()
 
    OrderNumber=0; // OrderNumber used in Entry Rules
    
-
-     
-//----------Entry & Exit Variables-----------
-   //Entry variables:
-   if(FlagBuy) CrossTriggered1=1;
-   if(FlagSell) CrossTriggered1=2;
+   CrossTriggered1=0;
+   
+        //----------Entry & Exit Variables-----------
+   //Entry variables, we want to open order only at the beginning of every new bar:
+   if(IsNewCandle())
+     {
+      //Alert("I am in at new bar!");
+      if(FlagBuy) CrossTriggered1=1;
+      if(FlagSell) CrossTriggered1=2;
+     }
    
    //Exit variables:
    if(closeAllOnFridays)
