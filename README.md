@@ -16,6 +16,8 @@ PATH_T2_E - path to Development Terminal MT4, folder *\MQL4\Experts
 PATH_T1_E, PATH_T3_E, etc - paths to the Terminals where all other terminals are located
 PATH_DSS_Repo - path to the folder where this repository is stored on the local computer
 
+*Note* Edit script setupEV.bat to automatically setup such Environmental Variables
+
 ## Version 1.008
 
 Add architecture to store ticket numbers and array info into the flat files and update this info on platform restart
